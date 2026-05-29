@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.1
+- Remove the redundant app name from the plugin manifest description for Community Plugins review.
+
 ## 1.2.0
 - Add Anthropic and Gemini API providers.
 - Add refreshable model dropdowns for OpenAI, Anthropic, and Gemini.
