@@ -1,13 +1,13 @@
 # Publishing Copilot Auto Completion Plus
 
-## GitHub release 1.2.1
+## GitHub release 1.2.2
 
-Use the release tag `1.2.1`. It must match the `version` field in `manifest.json`.
+Use the release tag `1.2.2`. It must match the `version` field in `manifest.json`.
 
 Release title:
 
 ```text
-Copilot Auto Completion Plus 1.2.1
+Copilot Auto Completion Plus 1.2.2
 ```
 
 Release notes:
@@ -19,7 +19,8 @@ Release notes:
 - Adds refreshable model dropdowns for OpenAI, Anthropic, and Gemini.
 - Uses the OpenAI Responses API by default for OpenAI while preserving OpenAI-compatible Chat Completions URLs.
 - Updates OpenAI Chat Completions requests to use `max_completion_tokens`.
-- Removes the redundant app name from the plugin manifest description for Community Plugins review.
+- Removes source-review warnings for `lodash` and `builtin-modules`.
+- Replaces loader CSS with browser-compatible animation styles.
 
 ## Validation
 
@@ -37,7 +38,7 @@ Upload these release assets:
 The prepared local zip is:
 
 ```text
-/private/tmp/copilot-auto-completion-plus-1.2.1-release.zip
+/private/tmp/copilot-auto-completion-plus-1.2.2-release.zip
 ```
 
 ## Obsidian Community submission

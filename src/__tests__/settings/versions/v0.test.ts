@@ -1,7 +1,6 @@
 import {describe, expect, test} from "@jest/globals";
 import {TypeOf} from "zod";
 
-import {cloneDeep} from "lodash";
 import {DEFAULT_SETTINGS, pluginDataSchema, settingsSchema, triggerSchema} from "../../../settings/versions/v0/v0";
 
 import Context from "../../../context_detection";
@@ -13,6 +12,7 @@ import {
 } from "../../../settings/versions/shared";
 import * as fs from 'fs';
 import * as path from 'path';
+import {cloneDeep} from "../../../test_utils/clone";
 
 
 describe('triggerSchema', () => {

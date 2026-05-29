@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.2
+- Remove `lodash` and `builtin-modules` dependencies to satisfy Community Plugins source review.
+- Replace loader CSS with browser-compatible animation styles for Community Plugins CSS review.
+
 ## 1.2.1
 - Remove the redundant app name from the plugin manifest description for Community Plugins review.
 

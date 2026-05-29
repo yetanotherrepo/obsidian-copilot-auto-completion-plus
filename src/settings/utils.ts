@@ -1,6 +1,5 @@
 import {DEFAULT_SETTINGS, PluginData, Settings, settingsSchema} from "./versions";
 import {z, ZodError, ZodIssueCode, ZodType} from 'zod';
-import {cloneDeep, each, get, has, isArray, isEqual, isNumber, isObject, isString, set, unset} from "lodash";
 import {isSettingsV0, isSettingsV1, migrateFromV0ToV1} from "./versions/migration";
 import {err, ok, Result} from "neverthrow";
 import * as mm from "micromatch";
@@ -75,10 +74,10 @@ function replaceValueWithDefaultValue<V, T>(
     paths: string[],
     defaultValue: T,
 ): V {
-    const result = cloneDeep(value) as any;
+    const result = cloneJson(value) as any;
     paths.forEach(path => {
-        const originalValue = has(defaultValue, path) ? get(defaultValue, path) : undefined;
-        set(result, path, originalValue);
+        const originalValue = hasPath(defaultValue, path) ? getPath(defaultValue, path) : undefined;
+        setPath(result, path, originalValue);
     });
 
     return result;
@@ -104,7 +103,7 @@ function removeUnrecognizedKeys(value: JSONObject | null | undefined, error: Zod
         });
 
     unrecognizedPaths.forEach(path => {
-        unset(value, path);
+        unsetPath(value, path);
     });
     return value;
 }
@@ -186,38 +185,116 @@ export function findEqualPaths(obj1: any, obj2: any, basePath = ''): string[] {
     if (
         basePath === ''
         && (
-            !isObject(obj1)
-            || !isObject(obj2)
-            || isArray(obj1)
-            || isArray(obj2)
-            || isNumber(obj1)
-            || isNumber(obj2)
-            || isString(obj1)
-            || isString(obj2)
+            !isRecordLike(obj1)
+            || !isRecordLike(obj2)
+            || Array.isArray(obj1)
+            || Array.isArray(obj2)
+            || typeof obj1 === "number"
+            || typeof obj2 === "number"
+            || typeof obj1 === "string"
+            || typeof obj2 === "string"
         )
     ) {
         return [];
     }
 
-    // Function to iterate over keys and compare values
     function iterateKeys(value: any, key: string | number): void {
-        const path = basePath ? `${basePath}.${key}` : `${key}`;
-        if (isObject(value) && isObject(get(obj2, key))) {
-            // Recursively find paths for nested objects
-            paths = paths.concat(findEqualPaths(value, get(obj2, key), path));
-        } else if (isEqual(value, get(obj2, key))) {
-            // Add path to array if values are equal
+        const pathPart = typeof key === "number" ? `[${key}]` : key;
+        const path = basePath ? `${basePath}.${pathPart}` : `${pathPart}`;
+        const otherValue = obj2[key];
+        if (isRecordLike(value) && isRecordLike(otherValue)) {
+            paths = paths.concat(findEqualPaths(value, otherValue, path));
+        } else if (typeof value !== "function" && areEqual(value, otherValue)) {
             paths.push(path);
         }
     }
 
-    // If both are arrays, iterate using each index
-    if (isArray(obj1) && isArray(obj2)) {
-        each(obj1, (value, index) => iterateKeys(value, `[${index}]`));
+    if (Array.isArray(obj1) && Array.isArray(obj2)) {
+        obj1.forEach((value, index) => iterateKeys(value, index));
     } else {
-        // Iterate over keys of the first object
-        each(obj1, iterateKeys);
+        Object.entries(obj1).forEach(([key, value]) => iterateKeys(value, key));
     }
 
     return paths;
+}
+
+function cloneJson<T>(value: T): T {
+    return JSON.parse(JSON.stringify(value));
+}
+
+function pathSegments(path: string): (string | number)[] {
+    return path
+        .split(".")
+        .filter(segment => segment.length > 0)
+        .map(segment => {
+            const arrayIndexMatch = segment.match(/^\[(\d+)]$/);
+            return arrayIndexMatch ? Number(arrayIndexMatch[1]) : segment;
+        });
+}
+
+function hasPath(value: any, path: string): boolean {
+    let current = value;
+    for (const segment of pathSegments(path)) {
+        if (current === null || current === undefined || !Object.prototype.hasOwnProperty.call(current, segment)) {
+            return false;
+        }
+        current = current[segment];
+    }
+    return true;
+}
+
+function getPath(value: any, path: string): any {
+    let current = value;
+    for (const segment of pathSegments(path)) {
+        if (current === null || current === undefined) {
+            return undefined;
+        }
+        current = current[segment];
+    }
+    return current;
+}
+
+function setPath(value: any, path: string, newValue: any): void {
+    const segments = pathSegments(path);
+    let current = value;
+    segments.forEach((segment, index) => {
+        if (index === segments.length - 1) {
+            current[segment] = newValue;
+            return;
+        }
+        if (current[segment] === null || current[segment] === undefined) {
+            current[segment] = typeof segments[index + 1] === "number" ? [] : {};
+        }
+        current = current[segment];
+    });
+}
+
+function unsetPath(value: any, path: string): void {
+    const segments = pathSegments(path);
+    let current = value;
+    for (let index = 0; index < segments.length - 1; index++) {
+        current = current[segments[index]];
+        if (current === null || current === undefined) {
+            return;
+        }
+    }
+    delete current[segments[segments.length - 1]];
+}
+
+function isRecordLike(value: any): boolean {
+    return typeof value === "object" && value !== null;
+}
+
+function areEqual(value1: any, value2: any): boolean {
+    if (value1 === value2) {
+        return true;
+    }
+    if (!isRecordLike(value1) || !isRecordLike(value2)) {
+        return false;
+    }
+    try {
+        return JSON.stringify(value1) === JSON.stringify(value2);
+    } catch {
+        return false;
+    }
 }

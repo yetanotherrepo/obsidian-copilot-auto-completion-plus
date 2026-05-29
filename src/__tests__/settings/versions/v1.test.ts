@@ -1,7 +1,6 @@
 import {describe, expect, test} from "@jest/globals";
 import {TypeOf} from "zod";
 import {DEFAULT_SETTINGS, pluginDataSchema, settingsSchema, triggerSchema} from "../../../settings/versions/v1/v1";
-import {cloneDeep} from "lodash";
 import {
     anthropicApiSettingsSchema,
     azureOAIApiSettingsSchema,
@@ -15,6 +14,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {parseWithSchema} from "../../../settings/utils";
 import {ok} from "neverthrow";
+import {cloneDeep} from "../../../test_utils/clone";
 
 describe('triggerSchema', () => {
     type TriggerSchemaType = TypeOf<typeof triggerSchema>;

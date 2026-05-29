@@ -4,8 +4,8 @@ import * as path from 'path';
 import {isSettingsV0, isSettingsV1, migrateFromV0ToV1} from "../../../settings/versions/migration";
 import {DEFAULT_SETTINGS as DEFAULT_SETTINGS_V0, Settings as SettingsV0, Trigger} from "../../../settings/versions/v0/v0";
 import {settingsSchema as settingsSchemaV1} from "../../../settings/versions/v1/v1";
-import {cloneDeep} from "lodash";
 import {isRegexValid, parseWithSchema} from "../../../settings/utils";
+import {cloneDeep} from "../../../test_utils/clone";
 
 
 test('Verify settings_v0.json is a valid SettingV0', () => {
@@ -78,4 +78,3 @@ test('Verify migration from v0 to v1 fixes removes triggers with empty values', 
         expect(trigger.value.length).toBeGreaterThan(0);
     });
 });
-

@@ -9,12 +9,11 @@ import {
     Settings as SettingsV1,
     settingsSchema as settingsSchemaV1
 } from "./v1/v1";
-import {cloneDeep, get, has, set} from "lodash";
 import {findEqualPaths, isRegexValid} from "../utils";
 
 export function migrateFromV0ToV1(settings: SettingsV0): SettingsV1 {
     // eslint-disable  @typescript-eslint/no-explicit-any
-    const updatedSettings: any = cloneDeep(settings);
+    const updatedSettings: any = cloneJson(settings);
     migrateDefaultSettings(updatedSettings, DEFAULT_SETTINGS_V0, DEFAULT_SETTINGS_V1);
 
     updatedSettings.triggers.forEach((trigger: Trigger) => {
@@ -53,9 +52,9 @@ export function migrateFromV0ToV1(settings: SettingsV0): SettingsV1 {
 function migrateDefaultSettings(setting: any, previousDefault: any, currentDefault: any): any {
     const unchangedDefaultProperties = findEqualPaths(setting, previousDefault);
     for (const path of unchangedDefaultProperties) {
-        if (has(currentDefault, path)) {
-            const newDefaultValue = get(currentDefault, path);
-            set(setting, path, newDefaultValue);
+        if (hasPath(currentDefault, path)) {
+            const newDefaultValue = getPath(currentDefault, path);
+            setPath(setting, path, newDefaultValue);
         }
     }
 }
@@ -70,4 +69,55 @@ export const isSettingsV0 = (settings: object): boolean => {
 export const isSettingsV1 = (settings: object): boolean => {
     const result = settingsSchemaV1.safeParse(settings);
     return result.success;
+}
+
+function cloneJson<T>(value: T): T {
+    return JSON.parse(JSON.stringify(value));
+}
+
+function pathSegments(path: string): (string | number)[] {
+    return path
+        .split(".")
+        .filter(segment => segment.length > 0)
+        .map(segment => {
+            const arrayIndexMatch = segment.match(/^\[(\d+)]$/);
+            return arrayIndexMatch ? Number(arrayIndexMatch[1]) : segment;
+        });
+}
+
+function hasPath(value: any, path: string): boolean {
+    let current = value;
+    for (const segment of pathSegments(path)) {
+        if (current === null || current === undefined || !Object.prototype.hasOwnProperty.call(current, segment)) {
+            return false;
+        }
+        current = current[segment];
+    }
+    return true;
+}
+
+function getPath(value: any, path: string): any {
+    let current = value;
+    for (const segment of pathSegments(path)) {
+        if (current === null || current === undefined) {
+            return undefined;
+        }
+        current = current[segment];
+    }
+    return current;
+}
+
+function setPath(value: any, path: string, newValue: any): void {
+    const segments = pathSegments(path);
+    let current = value;
+    segments.forEach((segment, index) => {
+        if (index === segments.length - 1) {
+            current[segment] = newValue;
+            return;
+        }
+        if (current[segment] === null || current[segment] === undefined) {
+            current[segment] = typeof segments[index + 1] === "number" ? [] : {};
+        }
+        current = current[segment];
+    });
 }

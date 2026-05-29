@@ -1,6 +1,5 @@
 import {describe, expect, test} from "@jest/globals";
 import {TypeOf} from "zod";
-import {cloneDeep} from "lodash";
 import {
     anthropicApiSettingsSchema,
     azureOAIApiSettingsSchema,
@@ -11,6 +10,7 @@ import {
     openAIApiSettingsSchema,
 } from "../../../settings/versions/shared";
 import {findEqualPaths} from "../../../settings/utils";
+import {cloneDeep} from "../../../test_utils/clone";
 
 
 describe('azureOAIApiSettingsSchema', () => {
