@@ -5,6 +5,11 @@ on:
     tags:
     - '*'
 
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
 env:
   PLUGIN_NAME: copilot-auto-completion-plus
 
@@ -22,7 +27,7 @@ jobs:
     - name: Build
       id: build
       run: |
-        npm install
+        npm ci
         npm run build
 
     - name: Test
@@ -37,6 +42,15 @@ jobs:
         cp main.js manifest.json styles.css ${{ env.PLUGIN_NAME }}
         zip -r ${{ env.PLUGIN_NAME }}-${{ github.ref_name }}.zip ${{ env.PLUGIN_NAME }}
         ls
+
+    - name: Attest release assets
+      uses: actions/attest-build-provenance@v3
+      with:
+        subject-path: |
+          main.js
+          manifest.json
+          styles.css
+          ${{ env.PLUGIN_NAME }}-${{ github.ref_name }}.zip
 
     - name: Get release notes
       id: release_notes

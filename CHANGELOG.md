@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.3
+- Generate GitHub artifact attestations for release assets.
+
 ## 1.2.2
 - Remove `lodash` and `builtin-modules` dependencies to satisfy Community Plugins source review.
 - Replace loader CSS with browser-compatible animation styles for Community Plugins CSS review.
