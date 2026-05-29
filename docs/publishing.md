@@ -42,6 +42,17 @@ The prepared local zip is:
 
 ## Obsidian Community submission
 
+The old `obsidianmd/obsidian-releases` pull-request route may be disabled by the repository owners. If GitHub says that owners disabled opening pull requests, use the Obsidian Community portal instead:
+
+1. Sign in at `https://community.obsidian.md`.
+2. Open your account's plugin management page.
+3. Choose the new plugin submission flow.
+4. Submit the repository URL:
+
+```text
+https://github.com/yetanotherrepo/obsidian-copilot-auto-completion-plus
+```
+
 Repository URL:
 
 ```text
