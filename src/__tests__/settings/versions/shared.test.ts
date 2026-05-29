@@ -2,8 +2,10 @@ import {describe, expect, test} from "@jest/globals";
 import {TypeOf} from "zod";
 import {cloneDeep} from "lodash";
 import {
+    anthropicApiSettingsSchema,
     azureOAIApiSettingsSchema,
     fewShotExampleSchema,
+    geminiApiSettingsSchema,
     modelOptionsSchema,
     ollamaApiSettingsSchema,
     openAIApiSettingsSchema,
@@ -97,6 +99,56 @@ describe('openAIApiSettingsSchema', () => {
     test('invalid url fails', () => {
         const data = {key: 'abc123', url: 'not an url', model: "model",};
         expect(() => openAIApiSettingsSchema.parse(data)).toThrow();
+    });
+});
+
+describe('anthropicApiSettingsSchema', () => {
+    type AnthropicApiSettingsSchemaType = TypeOf<typeof anthropicApiSettingsSchema>;
+    const baseData: AnthropicApiSettingsSchemaType = {
+        key: 'abc123',
+        model: "claude-sonnet-4-6",
+        url: 'https://api.anthropic.com/v1/messages'
+    };
+    const propertiesNames = Object.keys(anthropicApiSettingsSchema.shape) as Array<keyof AnthropicApiSettingsSchemaType>;
+
+    test.each(propertiesNames)('should throw an error if %s is missing', (property) => {
+        const dataWithoutProperty = cloneDeep(baseData);
+        delete dataWithoutProperty[property];
+        expect(() => anthropicApiSettingsSchema.parse(dataWithoutProperty)).toThrow();
+    });
+
+    test('successful parse', () => {
+        expect(anthropicApiSettingsSchema.parse(baseData)).toEqual(baseData);
+    });
+
+    test('invalid url fails', () => {
+        const data = {key: 'abc123', url: 'not an url', model: "claude-sonnet-4-6"};
+        expect(() => anthropicApiSettingsSchema.parse(data)).toThrow();
+    });
+});
+
+describe('geminiApiSettingsSchema', () => {
+    type GeminiApiSettingsSchemaType = TypeOf<typeof geminiApiSettingsSchema>;
+    const baseData: GeminiApiSettingsSchemaType = {
+        key: 'abc123',
+        model: "gemini-3-flash-preview",
+        url: 'https://generativelanguage.googleapis.com/v1beta'
+    };
+    const propertiesNames = Object.keys(geminiApiSettingsSchema.shape) as Array<keyof GeminiApiSettingsSchemaType>;
+
+    test.each(propertiesNames)('should throw an error if %s is missing', (property) => {
+        const dataWithoutProperty = cloneDeep(baseData);
+        delete dataWithoutProperty[property];
+        expect(() => geminiApiSettingsSchema.parse(dataWithoutProperty)).toThrow();
+    });
+
+    test('successful parse', () => {
+        expect(geminiApiSettingsSchema.parse(baseData)).toEqual(baseData);
+    });
+
+    test('invalid url fails', () => {
+        const data = {key: 'abc123', url: 'not an url', model: "gemini-3-flash-preview"};
+        expect(() => geminiApiSettingsSchema.parse(data)).toThrow();
     });
 });
 

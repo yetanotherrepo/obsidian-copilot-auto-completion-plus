@@ -1,7 +1,12 @@
 import {requestUrl} from "obsidian";
 import {err, ok, Result} from "neverthrow";
 
-export async function makeAPIRequest(url: string, method: string, body: object, headers: Record<string, string> | undefined = undefined): Promise<Result<any, Error>> {
+export async function makeAPIRequest(
+    url: string,
+    method: string,
+    body: object | undefined = undefined,
+    headers: Record<string, string> | undefined = undefined
+): Promise<Result<any, Error>> {
     try {
         if (headers === undefined) {
             headers = {
@@ -12,7 +17,7 @@ export async function makeAPIRequest(url: string, method: string, body: object, 
         const response = await requestUrl({
             url: url,
             method: method,
-            body: JSON.stringify(body),
+            body: body === undefined ? undefined : JSON.stringify(body),
             headers,
             throw: false,
             contentType: "application/json",
@@ -33,6 +38,6 @@ export async function makeAPIRequest(url: string, method: string, body: object, 
         return ok(response.json);
 
     } catch (error) {
-        return err(error)
+        return err(error instanceof Error ? error : new Error(String(error)))
     }
 }

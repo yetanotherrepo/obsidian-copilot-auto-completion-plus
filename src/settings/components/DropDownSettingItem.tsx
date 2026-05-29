@@ -8,6 +8,7 @@ interface IProps {
     value: string;
     setValue(value: string): void;
     options: { [key: string]: string };
+    placeholder?: string;
     errorMessage?: string;
     disabled?: boolean;
 }

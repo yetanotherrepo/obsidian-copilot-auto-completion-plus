@@ -22,6 +22,8 @@ import {FewShotExample, Settings} from "../../settings/versions";
 import RemoveWhitespace from "../post_processors/remove_whitespace";
 import OllamaApiClient from "../api_clients/OllamaApiClient";
 import {err, ok, Result} from "neverthrow";
+import AnthropicApiClient from "../api_clients/AnthropicApiClient";
+import GeminiApiClient from "../api_clients/GeminiApiClient";
 
 class ChatGPTWithReasoning implements PredictionService {
     private readonly client: ApiClient;
@@ -88,6 +90,10 @@ class ChatGPTWithReasoning implements PredictionService {
             client = AzureOAIClient.fromSettings(settings);
         } else if (settings.apiProvider === "ollama") {
             client = OllamaApiClient.fromSettings(settings);
+        } else if (settings.apiProvider === "anthropic") {
+            client = AnthropicApiClient.fromSettings(settings);
+        } else if (settings.apiProvider === "gemini") {
+            client = GeminiApiClient.fromSettings(settings);
         } else {
             throw new Error("Invalid API provider");
         }
@@ -141,12 +147,12 @@ class ChatGPTWithReasoning implements PredictionService {
         ];
 
         if (this.debugMode) {
-            console.log("Copilot messages send:\n", messages);
+            console.debug("Copilot messages sent:\n", messages);
         }
 
         let result = await this.client.queryChatModel(messages);
         if (this.debugMode && result.isOk()) {
-            console.log("Copilot response:\n", result.value);
+            console.debug("Copilot response:\n", result.value);
         }
 
         result = this.extractAnswerFromChainOfThoughts(result);
@@ -219,7 +225,7 @@ class ChatGPTWithReasoning implements PredictionService {
         if (result.value.length === 0) {
             return err(new Error("Empty result"));
         }
-        if (result.value.contains("<mask/>")) {
+        if (result.value.includes("<mask/>")) {
             return err(new Error("Mask in result"));
         }
 

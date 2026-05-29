@@ -3,8 +3,10 @@ import {TypeOf} from "zod";
 import {DEFAULT_SETTINGS, pluginDataSchema, settingsSchema, triggerSchema} from "../../../settings/versions/v1/v1";
 import {cloneDeep} from "lodash";
 import {
+    anthropicApiSettingsSchema,
     azureOAIApiSettingsSchema,
     fewShotExampleSchema,
+    geminiApiSettingsSchema,
     modelOptionsSchema, ollamaApiSettingsSchema,
     openAIApiSettingsSchema
 } from "../../../settings/versions/shared";
@@ -65,6 +67,16 @@ describe('settingsSchema', () => {
         url: 'https://example.com',
         model: 'gpt-3'
     });
+    const validAnthropicSettings = anthropicApiSettingsSchema.parse({
+        key: 'abc123',
+        url: 'https://api.anthropic.com/v1/messages',
+        model: 'claude-sonnet-4-6'
+    });
+    const validGeminiSettings = geminiApiSettingsSchema.parse({
+        key: 'abc123',
+        url: 'https://generativelanguage.googleapis.com/v1beta',
+        model: 'gemini-3-flash-preview'
+    });
     const validOllamaSettings = ollamaApiSettingsSchema.parse({
         url: 'https://example.com',
         model: 'mistral',
@@ -87,6 +99,8 @@ describe('settingsSchema', () => {
         apiProvider: 'azure',
         azureOAIApiSettings: validAzureSettings,
         openAIApiSettings: validOpenAISettings,
+        anthropicApiSettings: validAnthropicSettings,
+        geminiApiSettings: validGeminiSettings,
         ollamaApiSettings: validOllamaSettings,
         triggers: [validTrigger],
         delay: 1000,
@@ -125,7 +139,7 @@ describe('settingsSchema', () => {
         expect(() => settingsSchema.parse(dataWithInvalidApiProvider)).toThrow();
     });
 
-    test.each(['azure', 'openai'])('should validate successfully with apiProvider set to %s', (apiProvider) => {
+    test.each(['azure', 'openai', 'ollama', 'anthropic', 'gemini'])('should validate successfully with apiProvider set to %s', (apiProvider) => {
         const dataWithValidApiProvider = {...baseValidData, apiProvider};
         expect(settingsSchema.parse(dataWithValidApiProvider)).toEqual(dataWithValidApiProvider);
     });

@@ -6,7 +6,7 @@ on:
     - '*'
 
 env:
-  PLUGIN_NAME: obsidian-copilot-plugin
+  PLUGIN_NAME: copilot-auto-completion-plus
 
 jobs:
   build:
@@ -35,19 +35,22 @@ jobs:
       run: |
         mkdir ${{ env.PLUGIN_NAME }}
         cp main.js manifest.json styles.css ${{ env.PLUGIN_NAME }}
-        zip -r ${{ env.PLUGIN_NAME }}-${{ steps.build.outputs.tag_name }}.zip ${{ env.PLUGIN_NAME }}
+        zip -r ${{ env.PLUGIN_NAME }}-${{ github.ref_name }}.zip ${{ env.PLUGIN_NAME }}
         ls
-        echo "::set-output name=tag_name::$(git tag --sort version:refname | tail -n 1)"
 
     - name: Get release notes
       id: release_notes
       run: |
-        CHANGELOG=$(sed -n -e "/## ${{ steps.bundle.outputs.tag_name }}/,/## /p" CHANGELOG.md | sed '/## /d')
+        CHANGELOG=$(sed -n -e "/## ${{ github.ref_name }}/,/## /p" CHANGELOG.md | sed '/## /d')
         if [ -z "$CHANGELOG" ]; then  
           echo "Error: No release notes found for this version in CHANGELOG.md"  
           exit 1  
         fi  
-        echo "::set-output name=body::${CHANGELOG}"  
+        {
+          echo 'body<<EOF'
+          echo "$CHANGELOG"
+          echo EOF
+        } >> "$GITHUB_OUTPUT"
 
     - name: Release
       uses: softprops/action-gh-release@v1
@@ -55,9 +58,8 @@ jobs:
       with:
         token: ${{ github.token }}
         files: |
-          ${{ env.PLUGIN_NAME }}-${{ steps.bundle.outputs.tag_name }}.zip
+          ${{ env.PLUGIN_NAME }}-${{ github.ref_name }}.zip
           main.js
           manifest.json
           styles.css
         body: ${{ steps.release_notes.outputs.body }}
-

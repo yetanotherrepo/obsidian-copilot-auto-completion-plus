@@ -31,7 +31,14 @@ import {
     ollamaApiSettingsSchema,
 } from "../shared";
 import {z} from "zod";
-import {azureOAIApiSettingsSchema, fewShotExampleSchema, modelOptionsSchema, openAIApiSettingsSchema} from "../shared";
+import {
+    anthropicApiSettingsSchema,
+    azureOAIApiSettingsSchema,
+    fewShotExampleSchema,
+    geminiApiSettingsSchema,
+    modelOptionsSchema,
+    openAIApiSettingsSchema
+} from "../shared";
 import {isRegexValid, isValidIgnorePattern} from "../../utils";
 
 export const triggerSchema = z.object({
@@ -61,9 +68,11 @@ export const settingsSchema = z.object({
     version: z.literal("1"),
     enabled: z.boolean(),
     advancedMode: z.boolean(),
-    apiProvider: z.enum(['azure', 'openai', "ollama"]),
+    apiProvider: z.enum(['azure', 'openai', "ollama", "anthropic", "gemini"]),
     azureOAIApiSettings: azureOAIApiSettingsSchema,
     openAIApiSettings: openAIApiSettingsSchema,
+    anthropicApiSettings: anthropicApiSettingsSchema,
+    geminiApiSettings: geminiApiSettingsSchema,
     ollamaApiSettings: ollamaApiSettingsSchema,
     triggers: z.array(triggerSchema),
     delay: z.number().int().min(MIN_DELAY, {message: "Delay must be between 0ms and 2000ms"}).max(MAX_DELAY, {message: "Delay must be between 0ms and 2000ms"}),
@@ -116,8 +125,18 @@ export const DEFAULT_SETTINGS: Settings = {
     },
     openAIApiSettings: {
         key: "",
-        url: "https://api.openai.com/v1/chat/completions",
-        model: "gpt-3.5-turbo",
+        url: "https://api.openai.com/v1/responses",
+        model: "gpt-5.5",
+    },
+    anthropicApiSettings: {
+        key: "",
+        url: "https://api.anthropic.com/v1/messages",
+        model: "claude-sonnet-4-6",
+    },
+    geminiApiSettings: {
+        key: "",
+        url: "https://generativelanguage.googleapis.com/v1beta",
+        model: "gemini-3-flash-preview",
     },
     ollamaApiSettings: {
         url: "http://localhost:11434/api/chat",

@@ -6,6 +6,8 @@ import AzureOAIClient from "../../prediction_services/api_clients/AzureOAIClient
 import OpenAIApiClient from "../../prediction_services/api_clients/OpenAIApiClient";
 import {Settings} from "../versions";
 import OllamaApiClient from "../../prediction_services/api_clients/OllamaApiClient";
+import AnthropicApiClient from "../../prediction_services/api_clients/AnthropicApiClient";
+import GeminiApiClient from "../../prediction_services/api_clients/GeminiApiClient";
 
 interface IProps {
     settings: Settings;
@@ -35,6 +37,12 @@ export default function ConnectivityCheck(props: IProps): React.JSX.Element {
         }
         if (props.settings.apiProvider === "ollama") {
             return OllamaApiClient.fromSettings(props.settings);
+        }
+        if (props.settings.apiProvider === "anthropic") {
+            return AnthropicApiClient.fromSettings(props.settings);
+        }
+        if (props.settings.apiProvider === "gemini") {
+            return GeminiApiClient.fromSettings(props.settings);
         }
         throw new Error("Unknown API provider");
     };

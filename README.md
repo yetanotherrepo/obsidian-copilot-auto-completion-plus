@@ -1,10 +1,10 @@
-# Copilot like auto-completion for Obsidian
+# Copilot Auto Completion Plus for Obsidian
 This plugin adds a Copilot-like auto-completion to Obsidian.
 It uses large language models (LLMs) to generate text based on the `n` characters before and after your cursor.
 It will show the suggested completion in transparent text next to your cursor. 
 You can then press Tab to insert the entire suggestion, or the right arrow key to insert part of the suggestion. 
 Additionally, you can press Escape or move the cursor to ignore the suggestion.
-The plugin supports multiple API providers, such as OpenAI, Azure OpenAI and Ollama.
+The plugin supports multiple API providers, including OpenAI, Anthropic, Gemini, Azure OpenAI and Ollama.
 
 ![demo](assets/demo-static.gif)
 
@@ -16,13 +16,13 @@ The plugin offers the following features:
 - **Fill-in-the-Middle Auto-Completion**: The plugin provides suggestions based on the `n` characters before and after your cursor, displaying the proposed text as transparent overlay near your cursor, tailored to fit the current context. Want to know how it works? See the [how does the model work in detail?](docs/how%20does%20the%20model%20work%20in%20details.md) documentation.
 - **Context-Aware Suggestions**: The suggestions adapt to the current writing context. For instance, the plugin will offer text suggestions in paragraphs, code in code blocks, and LaTeX formulas in math blocks, among others. Want to know how it does this? See the [context aware few shot examples](docs/how%20does%20the%20model%20work%20in%20details.md#context-aware-few-shot-examples) documentation.
 - **Language-Aware Suggestions**: The automaticly tries to detect the language around the cursor and nudges the model to generate text in that language. See the [language detection documentation](docs/how%20does%20the%20model%20work%20in%20details.md#language-detection) for more information.
-- **Multiple API Providers**: Support is available for various API providers, including [OpenAI](docs/how-to/OpenAI%20API%20setup%20guide.md), [Azure OpenAI](docs/how-to/Azure%20API%20setup%20guide.md), and [Ollama](docs/how-to/Ollama%20setup%20guide.md). Additionally, you can configure the OpenAI API provider to use any API that implements the OpenAI standard, allowing you to use any local models or other API providers that implement this standard. 
+- **Multiple API Providers**: Support is available for various API providers, including [OpenAI](docs/how-to/OpenAI%20API%20setup%20guide.md), [Anthropic](docs/how-to/Anthropic%20API%20setup%20guide.md), [Gemini](docs/how-to/Gemini%20API%20setup%20guide.md), [Azure OpenAI](docs/how-to/Azure%20API%20setup%20guide.md), and [Ollama](docs/how-to/Ollama%20setup%20guide.md). OpenAI uses the Responses API by default, while OpenAI-compatible Chat Completions URLs are still supported. OpenAI, Anthropic, and Gemini models can be selected from a dropdown and refreshed from the provider's model list API.
 - **Highly Customizable**: Configure elements like [triggers](docs/personalization%20and%20settings.md#triggers), [trigger delay](docs/personalization%20and%20settings.md#trigger-delay), [prefix/suffix size](docs/personalization%20and%20settings.md#preprocessing), [text generation settings](docs/personalization%20and%20settings.md#model-options), [custom few-shot examples](docs/personalization%20and%20settings.md#customize-the-few-shot-examples), and the [custom system prompt](docs/personalization%20and%20settings.md#customize-the-system-prompts) to your liking.
 - **Git-Ignore-Like Functionality**: The plugin features functionality similar to `.gitignore`, automatically disabling itself when opening files that match certain patterns. This helps prevent unintended triggers in sensitive documents. For more information, [click here](docs/how-to/ignore%20files.md).
 - **Partial Suggestions Insertion**: Insert portions of a suggestion incrementally using the right arrow key, enabling word-by-word insertion.
 - **Smart Caching**: Suggestions are cached to minimize API calls. If the typed text matches a cached suggestion, that suggestion is displayed, avoiding an additional API call.
 - **Optimized to Reduce API Calls**: The plugin employs an intelligent queuing and trigger detection system to minimize API call frequency. For more information, [click here](docs/plugin%20design.md).
-- **Easy to disable**: The plugin can be disabled at any time using the `Obsidian Copilot: Disable` command. This allows you to disable the plugin when working on sensitive documents or when you are currently not in need of suggestions. 
+- **Easy to disable**: The plugin can be disabled at any time using the `Copilot Auto Completion Plus: Disable` command. This allows you to disable the plugin when working on sensitive documents or when you are currently not in need of suggestions.
 
 
 ## Getting Started
@@ -33,12 +33,14 @@ To install the plugin, please follow these steps:
 3. Select the 'Community Plugins' tab.
 4. Disable 'Restricted Mode' by turning it off.
 5. Access the Community Plugins Store by clicking the 'Browse' button.
-6. Search for 'Copilot Auto Completion.'
+6. Search for 'Copilot Auto Completion Plus.'
 7. Click the 'Install' button to proceed with the installation.
 8. Once installed, activate the plugin by enabling it in the 'Community Plugins' settings.
-9. Proceed to the 'Copilot Auto Completion' settings section.
+9. Proceed to the 'Copilot Auto Completion Plus' settings section.
 10. Choose your API provider and refer to the corresponding guide for specific instructions: 
     - [OpenAI API setup guide](docs/how-to/OpenAI%20API%20setup%20guide.md)
+    - [Anthropic API setup guide](docs/how-to/Anthropic%20API%20setup%20guide.md)
+    - [Gemini API setup guide](docs/how-to/Gemini%20API%20setup%20guide.md)
     - [Azure OpenAI API setup guide](docs/how-to/Azure%20API%20setup%20guide.md)
     - [Ollama setup guide](docs/how-to/Ollama%20setup%20guide.md)
 11. Depending on your chosen API provider, you may be required to enter additional details, such as an API key or endpoint URLs.
@@ -107,7 +109,7 @@ Explore the following pages:
 
 The plugin is designed to be highly customizable, allowing you to tailor the following aspects:
 
-- **API Provider**: Choose your preferred API provider. Options include [OpenAI](docs/how-to/OpenAI%20API%20setup%20guide.md), [Azure OpenAI](docs/how-to/Azure%20API%20setup%20guide.md), or [Ollama](docs/how-to/Ollama%20setup%20guide.md).
+- **API Provider**: Choose your preferred API provider. Options include [OpenAI](docs/how-to/OpenAI%20API%20setup%20guide.md), [Anthropic](docs/how-to/Anthropic%20API%20setup%20guide.md), [Gemini](docs/how-to/Gemini%20API%20setup%20guide.md), [Azure OpenAI](docs/how-to/Azure%20API%20setup%20guide.md), or [Ollama](docs/how-to/Ollama%20setup%20guide.md).
 - **[Triggers](docs/personalization%20and%20settings.md#triggers)**: Define the text after which the plugin should suggest a completion.
 - **[Trigger Delay](docs/personalization%20and%20settings.md#trigger-delay)**: Set the duration the plugin should wait before offering a suggestion to minimize costs.
 - **[Prefix/Suffix Size](docs/personalization%20and%20settings.md#preprocessing)**: Determine the amount of text to include in the prediction request.
@@ -135,7 +137,13 @@ Click here for more information about the [plugin's states](docs/plugin%20design
 
 ## Privacy Considerations
 
-When dealing with privacy-sensitive documents, you may prefer not to share their contents with API providers such as OpenAI or Azure OpenAI.
+### Network, accounts, and data use
+
+This plugin sends note context around your cursor to the API provider you configure so that the provider can generate a completion. Cloud providers require their own accounts and API keys. Ollama can be used as a local provider if you do not want requests to leave your machine.
+
+Provider API keys and endpoint settings are stored locally by Obsidian with this plugin's settings. The plugin does not include telemetry, ads, analytics, or a separate paid service, and it does not send data anywhere except the provider endpoint you configure.
+
+When dealing with privacy-sensitive documents, you may prefer not to share their contents with API providers such as OpenAI, Anthropic, Gemini, or Azure OpenAI.
 These providers could potentially store your data and utilize it to enhance their models, based on their current terms and conditions.
 So always make sure to read the terms and conditions of your chosen API provider before using it with this plugin.
 
@@ -143,7 +151,7 @@ To safeguard your privacy, you can take the following measures:
 
 1. Opt for a local API provider like [Ollama](https://ollama.ai/), which ensures your data remains on your computer. To set up a local provider, [click here](docs/how-to/Ollama%20setup%20guide.md) for a guide. However, it's important to note that these local models may not be as accurate or fast as their cloud-based counterparts.
 2. Utilize the `ignore` functionality within the plugin. Within the settings, you can define a list of patterns similar to .gitignore glob patterns. If you open a file matching one of these patterns, the plugin will automatically deactivate for that file and reactivate when you switch to a non-matching file. By default, the settings are configured to ignore all files within any parent folder named secret. For instructions on setting this up, [click here](docs/how-to/ignore files.md).
-3. Manually disable the plugin while working on sensitive documents by using the `Obsidian Copilot: Disable` command.
+3. Manually disable the plugin while working on sensitive documents by using the `Copilot Auto Completion Plus: Disable` command.
 
 ## Triggers
 As you write, the plugin monitors the text preceding your cursor to see if it matches any predefined triggers.
@@ -157,10 +165,10 @@ You can tailor these triggers in the plugin's settings according to your prefere
 However, please note that more sensitive triggers might increase API calls and, thus, incur higher expenses.
 See the [Personalization and Settings](docs/personalization%20and%20settings.md#triggers) to learn how to customize these triggers to your liking.
 
-In addition to automatic triggers, you can force the plugin to make a prediction by using the command palette (with `CMD + P` on Mac or `CTRL + P` on Windows) and typing `Obsidian Copilot: Predict`.
+In addition to automatic triggers, you can force the plugin to make a prediction by using the command palette (with `CMD + P` on Mac or `CTRL + P` on Windows) and typing `Copilot Auto Completion Plus: Predict`.
 This command enables you to request a prediction from the plugin at any time, independent of automatic triggers.
 Obsidian allows you to assign this command to any hotkey of your choice. 
-To do so, search for `Copilot` in the hotkey settings and assign a hotkey to the `Obsidian Copilot: Predict` command.
+To do so, search for `Copilot` in the hotkey settings and assign a hotkey to the `Copilot Auto Completion Plus: Predict` command.
 
 ![demo](assets/type_hint_prediction.gif)
 

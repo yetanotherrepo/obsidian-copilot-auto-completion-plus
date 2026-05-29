@@ -41,6 +41,8 @@ export function migrateFromV0ToV1(settings: SettingsV0): SettingsV1 {
     updatedSettings.ignoredTags = DEFAULT_SETTINGS_V1.ignoredTags;
     updatedSettings.cacheSuggestions = DEFAULT_SETTINGS_V1.cacheSuggestions;
     updatedSettings.ollamaApiSettings = DEFAULT_SETTINGS_V1.ollamaApiSettings;
+    updatedSettings.anthropicApiSettings = DEFAULT_SETTINGS_V1.anthropicApiSettings;
+    updatedSettings.geminiApiSettings = DEFAULT_SETTINGS_V1.geminiApiSettings;
     updatedSettings.debugMode = DEFAULT_SETTINGS_V1.debugMode;
 
     // Parsing the updated settings to ensure they match the SettingsV1 schema

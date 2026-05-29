@@ -8,7 +8,7 @@ on:
 
 
 env:
-  PLUGIN_NAME: obsidian-copilot-plugin
+  PLUGIN_NAME: copilot-auto-completion-plus
 
 jobs:
   build:
@@ -43,5 +43,4 @@ jobs:
           echo "Error: No release notes found for this version ($VERSION) in CHANGELOG.md"  
           exit 1  
         fi  
-
 

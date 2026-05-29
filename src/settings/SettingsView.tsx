@@ -12,6 +12,7 @@ import FewShotExampleSettings from "./components/FewShotExampleSettings";
 import ConnectivityCheck from "./components/ConnectivityCheck";
 import DropDownSettingItem from "./components/DropDownSettingItem";
 import {Notice} from "obsidian";
+import ProviderModelDropDownSettingItem from "./components/ProviderModelDropDownSettingItem";
 import {
     DEFAULT_SETTINGS,
     MAX_DELAY,
@@ -59,6 +60,12 @@ export default function SettingsView(props: IProps): React.JSX.Element {
         const openAIApiSettings = {
            ... settings.openAIApiSettings,
         };
+        const anthropicApiSettings = {
+            ...settings.anthropicApiSettings,
+        };
+        const geminiApiSettings = {
+            ...settings.geminiApiSettings,
+        };
         const ollamaApiSettings = {
             ...settings.ollamaApiSettings,
         }
@@ -68,6 +75,8 @@ export default function SettingsView(props: IProps): React.JSX.Element {
             apiProvider: settings.apiProvider,
             azureOAIApiSettings,
             openAIApiSettings,
+            anthropicApiSettings,
+            geminiApiSettings,
             ollamaApiSettings,
             advancedMode: settings.advancedMode,
         };
@@ -155,10 +164,8 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                             })
                         }
                     />
-                    <TextSettingItem
-                        name={"Model"}
-                        description={"The value of the model parameter in the request body."}
-                        placeholder="gpt-3.5-turbo"
+                    <ProviderModelDropDownSettingItem
+                        settings={settings}
                         value={settings.openAIApiSettings.model}
                         setValue={(value: string) =>
                             updateSettings({
@@ -172,6 +179,114 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                     />
 
                     <ConnectivityCheck key={"openai"} settings={settings}/>
+                </>
+            );
+        }
+        if (settings.apiProvider === "anthropic") {
+            return (
+                <>
+                    <TextSettingItem
+                        name={"Anthropic API URL"}
+                        description={
+                            "The URL used in the requests."
+                        }
+                        placeholder={"Your API URL..."}
+                        value={settings.anthropicApiSettings.url}
+                        errorMessage={errors.get("anthropicApiSettings.url")}
+                        setValue={(value: string) =>
+                            updateSettings({
+                                anthropicApiSettings: {
+                                    ...settings.anthropicApiSettings,
+                                    url: value,
+                                },
+                            })
+                        }
+                    />
+                    <TextSettingItem
+                        name={"Anthropic API key"}
+                        description={"The API key used in the requests."}
+                        placeholder={"Your API key..."}
+                        password
+                        value={settings.anthropicApiSettings.key}
+                        errorMessage={errors.get("anthropicApiSettings.key")}
+                        setValue={(value: string) =>
+                            updateSettings({
+                                anthropicApiSettings: {
+                                    ...settings.anthropicApiSettings,
+                                    key: value,
+                                },
+                            })
+                        }
+                    />
+                    <ProviderModelDropDownSettingItem
+                        settings={settings}
+                        value={settings.anthropicApiSettings.model}
+                        setValue={(value: string) =>
+                            updateSettings({
+                                anthropicApiSettings: {
+                                    ...settings.anthropicApiSettings,
+                                    model: value,
+                                }
+                            })
+                        }
+                        errorMessage={errors.get("anthropicApiSettings.model")}
+                    />
+
+                    <ConnectivityCheck key={"anthropic"} settings={settings}/>
+                </>
+            );
+        }
+        if (settings.apiProvider === "gemini") {
+            return (
+                <>
+                    <TextSettingItem
+                        name={"Gemini API URL"}
+                        description={
+                            "The API base URL used in the requests."
+                        }
+                        placeholder={"Your API URL..."}
+                        value={settings.geminiApiSettings.url}
+                        errorMessage={errors.get("geminiApiSettings.url")}
+                        setValue={(value: string) =>
+                            updateSettings({
+                                geminiApiSettings: {
+                                    ...settings.geminiApiSettings,
+                                    url: value,
+                                },
+                            })
+                        }
+                    />
+                    <TextSettingItem
+                        name={"Gemini API key"}
+                        description={"The API key used in the requests."}
+                        placeholder={"Your API key..."}
+                        password
+                        value={settings.geminiApiSettings.key}
+                        errorMessage={errors.get("geminiApiSettings.key")}
+                        setValue={(value: string) =>
+                            updateSettings({
+                                geminiApiSettings: {
+                                    ...settings.geminiApiSettings,
+                                    key: value,
+                                },
+                            })
+                        }
+                    />
+                    <ProviderModelDropDownSettingItem
+                        settings={settings}
+                        value={settings.geminiApiSettings.model}
+                        setValue={(value: string) =>
+                            updateSettings({
+                                geminiApiSettings: {
+                                    ...settings.geminiApiSettings,
+                                    model: value,
+                                }
+                            })
+                        }
+                        errorMessage={errors.get("geminiApiSettings.model")}
+                    />
+
+                    <ConnectivityCheck key={"gemini"} settings={settings}/>
                 </>
             );
         }
@@ -211,11 +326,17 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                         errorMessage={errors.get("ollamaApiSettings.model")}
                     />
 
-                    <ConnectivityCheck key={"openai"} settings={settings}/>
+                    <ConnectivityCheck key={"ollama"} settings={settings}/>
                 </>
             );
         }
     };
+
+    const supportsTemperatureSettings = settings.apiProvider !== "anthropic";
+    const supportsPenaltySettings = settings.apiProvider === "openai"
+        || settings.apiProvider === "azure"
+        || settings.apiProvider === "gemini";
+    const supportsMaxTokensSetting = settings.apiProvider !== "ollama";
 
     return (
         <div>
@@ -243,12 +364,20 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                 }
                 value={settings.apiProvider}
                 setValue={(value: string) => {
-                    if (value === "openai" || value === "azure" || value === "ollama") {
+                    if (
+                        value === "openai"
+                        || value === "azure"
+                        || value === "ollama"
+                        || value === "anthropic"
+                        || value === "gemini"
+                    ) {
                         updateSettings({apiProvider: value});
                     }
                 }}
                 options={{
                     openai: "OpenAI API",
+                    anthropic: "Anthropic API",
+                    gemini: "Gemini API",
                     azure: "Azure OAI API",
                     ollama: "Self-hosted OLLAMA API"
                 }}
@@ -268,45 +397,47 @@ export default function SettingsView(props: IProps): React.JSX.Element {
 
 
             <h2>Model Options</h2>
-            <SliderSettingsItem
-                name={"Temperature"}
-                description={
-                    "This parameter affects randomness in the sampling. Lower values result in more repetitive and deterministic responses. Higher temperatures will result in more unexpected or creative responses."
-                }
-                value={settings.modelOptions.temperature}
-                errorMessage={errors.get("modelOptions.temperature")}
-                setValue={(value: number) =>
-                    updateSettings({
-                        modelOptions: {
-                            ...settings.modelOptions,
-                            temperature: value,
-                        },
-                    })
-                }
-                min={MIN_TEMPERATURE}
-                max={MAX_TEMPERATURE}
-                step={0.05}
-            />
-            <SliderSettingsItem
-                name={"TopP"}
-                description={
-                    "Like the temperature parameter, the Top P parameter affects the randomness in sampling. Lowering the value will limit the model's token selection to likelier tokens while increasing the value expands the model's token selection with lower likelihood tokens."
-                }
-                value={settings.modelOptions.top_p}
-                errorMessage={errors.get("modelOptions.top_p")}
-                setValue={(value: number) =>
-                    updateSettings({
-                        modelOptions: {
-                            ...settings.modelOptions,
-                            top_p: value,
-                        },
-                    })
-                }
-                min={MIN_TOP_P}
-                max={MAX_TOP_P}
-                step={0.05}
-            />
-            {settings.apiProvider !== "ollama" && (<>
+            {supportsTemperatureSettings && (<>
+                <SliderSettingsItem
+                    name={"Temperature"}
+                    description={
+                        "This parameter affects randomness in the sampling. Lower values result in more repetitive and deterministic responses. Higher temperatures will result in more unexpected or creative responses."
+                    }
+                    value={settings.modelOptions.temperature}
+                    errorMessage={errors.get("modelOptions.temperature")}
+                    setValue={(value: number) =>
+                        updateSettings({
+                            modelOptions: {
+                                ...settings.modelOptions,
+                                temperature: value,
+                            },
+                        })
+                    }
+                    min={MIN_TEMPERATURE}
+                    max={MAX_TEMPERATURE}
+                    step={0.05}
+                />
+                <SliderSettingsItem
+                    name={"TopP"}
+                    description={
+                        "Like the temperature parameter, the Top P parameter affects the randomness in sampling. Lowering the value will limit the model's token selection to likelier tokens while increasing the value expands the model's token selection with lower likelihood tokens."
+                    }
+                    value={settings.modelOptions.top_p}
+                    errorMessage={errors.get("modelOptions.top_p")}
+                    setValue={(value: number) =>
+                        updateSettings({
+                            modelOptions: {
+                                ...settings.modelOptions,
+                                top_p: value,
+                            },
+                        })
+                    }
+                    min={MIN_TOP_P}
+                    max={MAX_TOP_P}
+                    step={0.05}
+                />
+            </>)}
+            {supportsPenaltySettings && (<>
                 <SliderSettingsItem
                     name={"Frequency Penalty"}
                     description={
@@ -345,6 +476,8 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                     max={MAX_PRESENCE_PENALTY}
                     step={0.05}
                 />
+            </>)}
+            {supportsMaxTokensSetting && (<>
                 <SliderSettingsItem
                     name={"Max Tokens"}
                     description={

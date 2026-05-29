@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0
+- Add Anthropic and Gemini API providers.
+- Add refreshable model dropdowns for OpenAI, Anthropic, and Gemini.
+- Update OpenAI chat requests to use `max_completion_tokens` for current GPT models.
+- Use the OpenAI Responses API by default while keeping OpenAI-compatible Chat Completions URLs supported.
+- Rename the fork to Copilot Auto Completion Plus for Community Plugins publishing.
+
 ## 1.1.3
 - Made openai api key optional for `OpenAI API` provider. This allows you to point the `OpenAI API` provider to any local model or other api provider that implements the OpenAI API.
 
@@ -29,4 +36,3 @@
 
 ## 1.0.5
 - Add the ability to change openai models, allowing you to select other openai chat models such as GPT-4.
-

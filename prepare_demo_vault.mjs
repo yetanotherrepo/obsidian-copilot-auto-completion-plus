@@ -8,7 +8,7 @@ function main() {
      */
     const main_js = path.resolve("main.js");
     const srcPaths = ["manifest.json", "styles.css", main_js].map((p) => path.resolve(p));
-    const outputFolder = "demo_vault/.obsidian/plugins/copilot-auto-completion";
+    const outputFolder = "demo_vault/.obsidian/plugins/copilot-auto-completion-plus";
 
     if (!fs.existsSync(main_js)) {
         fs.writeFileSync(main_js, '');

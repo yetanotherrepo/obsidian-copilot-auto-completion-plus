@@ -61,4 +61,4 @@ You can do this by taking the following steps:
 5. Confirm that the `Azure OAI API URL` field is set to URL you copied earlier. This should be something like `https://YOUR_AOI_SERVICE_NAME.openai.azure.com/openai/deployments/YOUR_MODEL_DEPLOyMENT_NAME/chat/completions?api-version=2023-07-01-preview`.
 6. Test the connection by clicking the `Test Connection` button to ensure the API key is correct and the plugin can connect to the OpenAI API.
 7. Exit the settings window.
-8. The plugin is now ready for use. Begin typing, and upon reaching a trigger, such as the end of a sentence, the plugin will offer suggestions. Or manually trigger the plugin by opening the command palette and typing `Copilot auto completion: Predict`.
+8. The plugin is now ready for use. Begin typing, and upon reaching a trigger, such as the end of a sentence, the plugin will offer suggestions. Or manually trigger the plugin by opening the command palette and typing `Copilot Auto Completion Plus: Predict`.

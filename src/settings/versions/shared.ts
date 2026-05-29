@@ -27,6 +27,18 @@ export const openAIApiSettingsSchema = z.object({
     model: z.string(),
 }).strict();
 
+export const anthropicApiSettingsSchema = z.object({
+    key: z.string(),
+    url: z.string().url(),
+    model: z.string(),
+}).strict();
+
+export const geminiApiSettingsSchema = z.object({
+    key: z.string(),
+    url: z.string().url(),
+    model: z.string(),
+}).strict();
+
 export const ollamaApiSettingsSchema = z.object({
     url: z.string().url(),
     model: z.string(),
