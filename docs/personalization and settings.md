@@ -30,10 +30,12 @@ The LLM models also have certain hyperparameters that can be tuned.
 For example, you are free to change the following parameters:
 - `temperature`: Controls randomness. Lower temperatures result in more repetitive and deterministic responses. Higher temperatures will result in more unexpected or creative responses.
 - `top_p`: Like the temperature, lowering Top P will limit the model's token selection to likelier tokens. Increasing Top P expands the model's token selection with lower likelihood tokens.
-- `max_tokens`: The maximum number of tokens the model is allowed to generate. This includes the chain of thought tokens before the answer.
+- `max_tokens`: The maximum number of tokens the model is allowed to generate.
 - `presence_penalty`: Reduce the chance of repeating any token that has appeared in the text so far. This increases the likelihood of introducing new topics in a response.
 - `frequency_penalty`: Reduce the chance of repeating a token proportionally based on how often it has appeared in the text so far. This decreases the likelihood of repeating the exact same text in a response.
 
+The settings view only shows parameters that the selected provider and model can use.
+For example, reasoning models can hide sampling controls such as temperature or top-p.
 These parameters allow you to customize the model's creativity and reliability.
 Feel free to experiment with these parameters to find the best settings for you.
 
@@ -60,7 +62,7 @@ This prompt is fully customizable.
 Feel free to experiment with this prompt to find the best settings for you.
 However, be aware that you must make it consistent with the following settings:
 - Few shot examples (See Customize the few shot examples section bellow.)
-- Chain-of-thought removal regex: This regex removes all the non-answer-related text from the response. If this is not done correctly, you might get unexpected text in your suggestions.
+- Answer extraction regex: This optional regex removes any preamble before the final completion. Leave it empty when using the default answer-only prompt.
 - User message template: This template is used to generate the user message that is shown in the suggestion. It determines how the prefix, mask, and suffix are combined into a single message.
 
 ![system_prompt](../assets/system_message_settings.jpg)

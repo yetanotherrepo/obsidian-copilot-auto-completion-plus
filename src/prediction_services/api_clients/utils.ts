@@ -1,12 +1,22 @@
 import {requestUrl} from "obsidian";
 import {err, ok, Result} from "neverthrow";
+import {
+    ProviderError,
+    ProviderName,
+    SafeDiagnostics,
+    createProviderError,
+    providerErrorFromHttpResponse,
+    providerErrorToError,
+} from "../provider";
 
-export async function makeAPIRequest(
+export async function makeProviderRequest(
+    provider: ProviderName,
     url: string,
-    method: string,
+    method: "GET" | "POST",
     body: object | undefined = undefined,
-    headers: Record<string, string> | undefined = undefined
-): Promise<Result<any, Error>> {
+    headers: Record<string, string> | undefined = undefined,
+    diagnostics: SafeDiagnostics
+): Promise<Result<any, ProviderError>> {
     try {
         if (headers === undefined) {
             headers = {
@@ -15,29 +25,50 @@ export async function makeAPIRequest(
         }
 
         const response = await requestUrl({
-            url: url,
-            method: method,
+            url,
+            method,
             body: body === undefined ? undefined : JSON.stringify(body),
             headers,
             throw: false,
             contentType: "application/json",
         });
 
-        if (response.status >= 500) {
-            return err(new Error("API returned status code 500. Please try again later."));
-        }
-
         if (response.status >= 400) {
-            let errorMessage = `API returned status code ${response.status}`;
-            if (response.json && response.json.error && response.json.error.message) {
-                errorMessage += `: ${response.json.error.message}`;
-            }
-            return err(new Error(errorMessage));
+            return err(providerErrorFromHttpResponse(provider, response.status, response.json, diagnostics));
         }
 
         return ok(response.json);
 
     } catch (error) {
-        return err(error instanceof Error ? error : new Error(String(error)))
+        const message = error instanceof Error ? error.message : String(error);
+        const lowerMessage = message.toLowerCase();
+        return err(createProviderError({
+            provider,
+            code: lowerMessage.includes("timeout") || lowerMessage.includes("abort") ? "timeout" : "unknown",
+            message,
+            retryable: true,
+            safeDiagnostics: diagnostics,
+        }));
     }
+}
+
+export async function makeAPIRequest(
+    url: string,
+    method: string,
+    body: object | undefined = undefined,
+    headers: Record<string, string> | undefined = undefined
+): Promise<Result<any, Error>> {
+    const result = await makeProviderRequest(
+        "openai",
+        url,
+        method === "GET" ? "GET" : "POST",
+        body,
+        headers,
+        {
+            provider: "openai",
+            model: "Unknown",
+            endpoint: url,
+        }
+    );
+    return result.mapErr(providerErrorToError);
 }

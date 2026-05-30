@@ -10,12 +10,12 @@ To do this, we give the model the following system instructions:
 
 ```text
 Your job is to predict the most logical text that should be written at the location of the <mask/>.
-Your answer can be either code, a single word, or multiple sentences.
-Your answer must be in the same language as the text that is already there.
-Your response must have the following format:
-THOUGHT: here, you reason about the answer; use the 80/20 principle to be brief.
-LANGUAGE: here, you write the language of your answer, e.g. English, Python, Dutch, etc.
-ANSWER: here, you write the text that should be at the location of <mask/>.
+Return only the text that should replace <mask/>.
+Do not include explanations, labels, analysis, Markdown fences, or surrounding text unless the replacement itself needs them.
+Your answer can be code, a single word, or multiple sentences.
+If the <mask/> is in the middle of a partial sentence, return only the missing word or words needed to complete that sentence.
+Do not repeat text that already appears directly before or after the <mask/>.
+Use the same language, style, formatting, indentation, and Markdown context as the surrounding text.
 ```
 
 We then provide the model with the (truncated) text before and after the cursor in the format `<truncated_text_before_cursor> <mask/> <truncated_text_after_cursor>`.
@@ -35,16 +35,14 @@ In this formula we have the following components:
 - Attention weight $\alpha_i$: the amount of attention to put on value $i$.
 ```
 
-The model then responses with something like:
+The model then responds with something like:
 
 ```text
-THOUGHT: The </mask> is located in a math block. The text before the mask is explaining the attention weight calculation. Based on the text, my answer should be the formula for calculating the attention weight using the score function. 
-ANSWER: \alpha_i = \frac{\exp(f_{score}(key_i, query))}{\sum_j \exp(f_{score}(key_j, query))}
+\alpha_i = \frac{\exp(f_{score}(key_i, query))}{\sum_j \exp(f_{score}(key_j, query))}
 ```
 
-The thought part helps the model to reason about the task and focuses the attention mechanism on the relevant parts of the text.
-However, the thought part is not very useful for the user.
-So, we remove this part. As a result, the suggestion only contains the generated text after the `ANSWER:` part.
+The default prompt is answer-only, so the response can be inserted directly after postprocessing.
+If you use a legacy or custom prompt that includes labels before the final answer, the advanced Answer extraction regex can remove that preamble.
 
 As you can see in the above example, the model only has access to the text in the current document.
 This prevents the model from leaking information from other documents that might be privacy-sensitive. 
@@ -79,8 +77,7 @@ The average value has the property that 50% of the weighted* value will be above
 
 Output:
 ```text
-THOUGHT: The </mask> is located in math block. Based on the text before and after the mask my answer should be the latex formula for the sample mean. 
-ANSWER: \frac{1}{n} \sum_i^n x_i
+\frac{1}{n} \sum_i^n x_i
 ```
 
 This example is math block specific, so this example will only be included if the cursor is in a math block.
@@ -101,9 +98,9 @@ This way, you tell the model about your specific writing style and expectations.
 See the [advanced settings](#advanced-configuration) section for more information.
 
 
-### Language Detection
-The system prompt compels the model to respond with `LANGUAGE: <language>`, a directive further reinforced by the context-aware few-shot examples.
-This prompt engineering strategy ensures the model considers the language of the surrounding text and encourages consistency in its responses.
+### Language Matching
+The system prompt asks the model to use the same language, style, formatting, indentation, and Markdown context as the surrounding text.
+This prompt engineering strategy encourages the model to consider the surrounding text and produce a completion that fits naturally.
 While there is no 100% guarantee that the model will respond in the same language, my experience suggests that it is significantly more likely to do so.
 
 Despite all system prompts being in English, the model is capable of providing quality suggestions in other languages. 
@@ -115,18 +112,12 @@ This presents a considerable advantage as:
 | English                                                                                                                                                                                    | Dutch                                                                                                                                                          | Chinese                                                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ![English](../assets/language-detection-english.jpg)                                                                                                                                       | ![Dutch](../assets/language-detection-dutch.jpg)                                                                                                               | ![Chinese](../assets/language-detection-chinese.jpg)                                                                                                                                                       |
-| THOUGHT: The paragraph introduces Bitcoin and its unique features, emphasizing its decentralized nature and accessibility to all users. The title should reflect this introductory nature. | THOUGHT: The paragraph introduces Bitcoin as a new form of digital currency and explains its decentralized nature. The title should reflect this introduction. | THOUGHT: The paragraph provides an overview of Bitcoin, emphasizing its decentralized nature and the need for learning about its underlying technology. The title should reflect this introductory nature. |
-| LANGUAGE: English                                                                                                                                                                          | LANGUAGE: Dutch                                                                                                                                                | LANGUAGE: Chinese                                                                                                                                                                                          |
-| ANSWER: Introduction to Bitcoin                                                                                                                                                            | ANSWER: Introductie van Bitcoin                                                                                                                                | ANSWER: 什么是比特币？                                                                                                                                                                                     |
-
-Note: The above examples have been generated by `Chat-GPT3.5-16k` API version `2023-07-01-preview`.
+| Introduction to Bitcoin                                                                                                                                                                    | Introductie van Bitcoin                                                                                                                                        | 什么是比特币？                                                                                                                                                                                             |
 
 This same approach also works for code blocks and math blocks.
-In the few-shot examples, for these contexts, we set the example answer equal to the programming language in the case of code blocks and LaTeX in the case of math blocks.
-This makes the model more consistent in generating the correct code, while its thought section does not need to focus on language-specific implementation details.
+In the few-shot examples, code block examples contain code and math block examples contain LaTeX.
+This makes the model more consistent in generating the correct completion without extra explanation.
   
 | Python                                                                                                    | TypeScript                                                                                                                                                                                                                | Rust                                                                                                                                                                                                                 |
 | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ![English](../assets/language-detection-python.jpg)                                                       | ![Dutch](../assets/language-detection-typescript.jpg)                                                                                                                                                                     | ![Chinese](../assets/language-detection-rust.jpg)                                                                                                                                                                    |
-| THOUGHT: The code should implement Kadane's algorithm by following the steps mentioned in the description | THOUGHT: The code should implement Kadane's algorithm as described in the text. It should initialize `currentSum` and `maxSum`, then loop through the array to update these variables based on the two choices mentioned. | THOUGHT: The code should implement Kadane's algorithm as described in the text. It should initialize `currentSum` and `maxSum`, then loop through the array to update these variables based on the given conditions. |
-| LANGUAGE: Python                                                                                          | LANGUAGE: TypeScript                                                                                                                                                                                                      | LANGUAGE: Rust                                                                                                                                                                                                       |

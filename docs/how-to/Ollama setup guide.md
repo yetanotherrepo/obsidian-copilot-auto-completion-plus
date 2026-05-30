@@ -32,6 +32,6 @@ Because it had a lot of "self-confidence."
 5. Enter the downloaded model's name in the designated field.  
 6. Click the `Test Connection` button to confirm the API key's validity and the plugin's ability to connect to the Ollama API.  
 7. Close the settings window.  
-8. With the setup complete, the plugin is ready for use. It will offer suggestions as you type, triggered at specific points such as the end of a sentence, or you can manually activate it by using the command palette and entering `Copilot auto-completion: Predict`.
+8. With the setup complete, the plugin is ready for use. It will offer suggestions as you type, triggered at specific points such as the end of a sentence, or you can manually activate it by using the command palette and entering `Copilot Auto Completion Plus: Predict`.
 
 Note: If Ollama does not automatically start up the API server, you can manually start it by running `ollama serve` in a terminal.

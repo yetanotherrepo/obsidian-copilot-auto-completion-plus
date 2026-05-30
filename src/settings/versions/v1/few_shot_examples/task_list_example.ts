@@ -1,4 +1,4 @@
-import {FewShotExample} from "../../index";
+import {FewShotExample} from "../../shared";
 import Context from "../../../../context_detection";
 
 const example: FewShotExample = {

@@ -35,7 +35,7 @@ Follow these steps to do so:
 3. Access the Azure OpenAI Studio by clicking the `Go to OpenAI Studio` button.
 4. Navigate to the Deployments page by selecting `Management > Deployments` from the left-hand menu.
 5. Click on the `+ Create new deployment` button.
-6. As of this writing, the recommended model for deployment is the `gpt-3.5-turbo-16k`.
+6. Choose a current chat/completion-capable deployment available in your Azure OpenAI resource. The plugin reads the deployment from the URL you paste into settings.
 
 ## How to obtain Azure OpenAI API keys and url
 To make API calls to the Azure OpenAI resource, you need to obtain an API key and url.

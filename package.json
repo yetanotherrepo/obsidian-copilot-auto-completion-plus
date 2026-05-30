@@ -1,13 +1,14 @@
 {
     "name": "obsidian-copilot-auto-completion-plus",
-    "version": "1.2.6",
+    "version": "1.3.0",
     "description": "Adds a highly configurable copilot-like auto-completion using OpenAI, Anthropic, Gemini, Azure OpenAI, or Ollama.",
     "main": "main.js",
     "scripts": {
         "dev": "node prepare_demo_vault.mjs && node esbuild.config.mjs",
         "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
         "version": "node version-bump.mjs && git add manifest.json versions.json",
-        "tests": "jest"
+        "tests": "jest",
+        "docs:check": "node scripts/check-docs-and-release.mjs"
     },
     "keywords": [],
     "author": "Daniil Shipilov",

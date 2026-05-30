@@ -14,6 +14,8 @@ import DropDownSettingItem from "./components/DropDownSettingItem";
 import {Notice} from "obsidian";
 import ProviderModelDropDownSettingItem from "./components/ProviderModelDropDownSettingItem";
 import ReportIssueSettingItem from "./components/ReportIssueSettingItem";
+import DiagnosticsSettingItem from "./components/DiagnosticsSettingItem";
+import {capabilitiesForSettings} from "./model_capabilities";
 import {
     DEFAULT_SETTINGS,
     MAX_DELAY,
@@ -43,6 +45,7 @@ interface IProps {
 export default function SettingsView(props: IProps): React.JSX.Element {
     const [settings, _setSettings] = useState<Settings>(props.settings);
     const errors = checkForErrors(settings);
+    const modelCapabilities = capabilitiesForSettings(settings);
 
     React.useEffect(() => {
         _setSettings(props.settings);
@@ -334,12 +337,6 @@ export default function SettingsView(props: IProps): React.JSX.Element {
         }
     };
 
-    const supportsTemperatureSettings = settings.apiProvider !== "anthropic";
-    const supportsPenaltySettings = settings.apiProvider === "openai"
-        || settings.apiProvider === "azure"
-        || settings.apiProvider === "gemini";
-    const supportsMaxTokensSetting = settings.apiProvider !== "ollama";
-
     return (
         <div>
             <h2>General</h2>
@@ -388,7 +385,7 @@ export default function SettingsView(props: IProps): React.JSX.Element {
             <CheckBoxSettingItem
                 name={"Debug mode"}
                 description={
-                    "If enabled, various debug messages will be logged to the console, such as the complete response from the API, including the chain of thought tokens."
+                    "If enabled, request and response summaries will be logged to the console. Note contents and API keys are not logged."
                 }
                 enabled={settings.debugMode}
                 setEnabled={(value) => updateSettings({debugMode: value})}
@@ -399,7 +396,16 @@ export default function SettingsView(props: IProps): React.JSX.Element {
 
 
             <h2>Model Options</h2>
-            {supportsTemperatureSettings && (<>
+            {modelCapabilities.isReasoningModel && (
+                <SettingsItem
+                    name={"Reasoning model"}
+                    description={"The selected model rejects some sampling controls, so unsupported options are hidden."}
+                >
+                    <span/>
+                </SettingsItem>
+            )}
+            {(modelCapabilities.supportsTemperature || modelCapabilities.supportsTopP) && (<>
+                {modelCapabilities.supportsTemperature && (
                 <SliderSettingsItem
                     name={"Temperature"}
                     description={
@@ -419,6 +425,8 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                     max={MAX_TEMPERATURE}
                     step={0.05}
                 />
+                )}
+                {modelCapabilities.supportsTopP && (
                 <SliderSettingsItem
                     name={"TopP"}
                     description={
@@ -438,8 +446,10 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                     max={MAX_TOP_P}
                     step={0.05}
                 />
+                )}
             </>)}
-            {supportsPenaltySettings && (<>
+            {(modelCapabilities.supportsFrequencyPenalty || modelCapabilities.supportsPresencePenalty) && (<>
+                {modelCapabilities.supportsFrequencyPenalty && (
                 <SliderSettingsItem
                     name={"Frequency Penalty"}
                     description={
@@ -459,6 +469,8 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                     max={MAX_FREQUENCY_PENALTY}
                     step={0.05}
                 />
+                )}
+                {modelCapabilities.supportsPresencePenalty && (
                 <SliderSettingsItem
                     name={"Presence Penalty"}
                     description={
@@ -478,12 +490,13 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                     max={MAX_PRESENCE_PENALTY}
                     step={0.05}
                 />
+                )}
             </>)}
-            {supportsMaxTokensSetting && (<>
+            {modelCapabilities.supportsMaxTokens && (<>
                 <SliderSettingsItem
                     name={"Max Tokens"}
                     description={
-                        "This parameter changes the maximum number of tokens the model is allowed to generate. This includes the chain of thought tokens before the answer."
+                        "This parameter changes the maximum number of tokens the model is allowed to generate."
                     }
                     value={settings.modelOptions.max_tokens}
                     errorMessage={errors.get("modelOptions.max_tokens")}
@@ -510,6 +523,16 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                 enabled={settings.dontIncludeDataviews}
                 setEnabled={(value) =>
                     updateSettings({dontIncludeDataviews: value})
+                }
+            />
+            <CheckBoxSettingItem
+                name={"Redact sensitive data"}
+                description={
+                    "If enabled, obvious emails, API tokens, bearer tokens, AWS access keys, and private keys are replaced before text is sent to the selected provider."
+                }
+                enabled={settings.redactSensitiveData}
+                setEnabled={(value) =>
+                    updateSettings({redactSensitiveData: value})
                 }
             />
             <SliderSettingsItem
@@ -656,6 +679,7 @@ export default function SettingsView(props: IProps): React.JSX.Element {
             </SettingsItem>
 
             <h2>Support</h2>
+            <DiagnosticsSettingItem/>
             <ReportIssueSettingItem pluginVersion={props.pluginVersion} settings={settings}/>
 
             <h2>Danger zone</h2>
@@ -685,9 +709,9 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                 <>
                     <h2>Advanced</h2>
                     <TextSettingItem
-                        name={"Chain of thought removal regex"}
+                        name={"Answer extraction regex"}
                         description={
-                            "This regex is used to remove the chain of thought tokens from the generated answer. If it is not implemented correctly, the chain of thought tokens will be included in the suggested completion."
+                            "This optional regex removes any preamble before the final completion. Leave it empty for answer-only prompts."
                         }
                         placeholder={"your regex..."}
                         value={settings.chainOfThoughRemovalRegex}
@@ -702,7 +726,7 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                     <SettingsItem
                         name={"System Message"}
                         description={
-                            "This system message gives the models all the context and instructions they need to complete the answer generation tasks. You can edit this message to your liking. If you edit the chain of thought formatting, make sure to update the extract regex and examples accordingly."
+                            "This system message gives the models the instructions they need to generate a completion. If you change the answer format, update the extraction regex and examples accordingly."
                         }
                         display={"block"}
                         errorMessage={errors.get("systemMessage")}
@@ -744,7 +768,7 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                         fewShotExamples={settings.fewShotExamples}
                         name={"Few Shot Examples"}
                         description={
-                            "The model uses these examples to learn the expected answer format. Not all examples are sent at the same time. We only send the relevant examples, given the current cursor location. For example, the CodeBlock examples are only sent if the cursor is in a code block. If no special context is detected, we send the Text examples. Each context has a default of 2 examples, but you can add or remove examples if there is at least one per context. You can add more examples, but this will increase the inference costs."
+                            "The model uses these examples to learn the expected completion format. Not all examples are sent at the same time. We only send the relevant examples, given the current cursor location. For example, the CodeBlock examples are only sent if the cursor is in a code block. If no special context is detected, we send the Text examples. Each context has a default of 2 examples, but you can add or remove examples if there is at least one per context. You can add more examples, but this will increase the inference costs."
                         }
                         setFewShotExamples={(value) =>
                             updateSettings({fewShotExamples: value})

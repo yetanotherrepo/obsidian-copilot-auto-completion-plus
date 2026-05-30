@@ -1,22 +1,44 @@
 import {ApiClient, ChatMessage, ModelOptions} from "../types";
 
 import {Settings} from "../../settings/versions";
-import {Result} from "neverthrow";
-import {makeAPIRequest} from "./utils";
+import {err, ok, Result} from "neverthrow";
+import {makeProviderRequest} from "./utils";
+import {
+    CompletionResult,
+    ModelCapabilities,
+    ModelSelection,
+    ProviderAdapter,
+    ProviderError,
+    ProviderRequest,
+    SafeDiagnostics,
+    createProviderError,
+    defaultModelCapabilities,
+    errorToProviderError,
+    extractUnsupportedParameter,
+    humanizeProviderError,
+    isResponsesEndpoint,
+    messagesCharCount,
+    optionsForCapabilities,
+    providerErrorToError,
+    sanitizeEndpoint,
+} from "../provider";
+import {recordRequestDiagnostics} from "../diagnostics";
 
 
-class OpenAIApiClient implements ApiClient {
+class OpenAIApiClient implements ApiClient, ProviderAdapter {
     private readonly apiKey: string;
     private readonly url: string;
     private readonly modelOptions: ModelOptions;
     private readonly model: string;
+    private readonly promptBundleVersion: string;
 
     static fromSettings(settings: Settings): OpenAIApiClient {
         return new OpenAIApiClient(
             settings.openAIApiSettings.key,
             settings.openAIApiSettings.url,
             settings.openAIApiSettings.model,
-            settings.modelOptions
+            settings.modelOptions,
+            settings.promptBundleVersion
         );
     }
 
@@ -24,23 +46,93 @@ class OpenAIApiClient implements ApiClient {
         apiKey: string,
         url: string,
         model: string,
-        modelOptions: ModelOptions
+        modelOptions: ModelOptions,
+        promptBundleVersion = "Unknown"
     ) {
         this.apiKey = apiKey;
         this.url = url;
         this.modelOptions = modelOptions;
         this.model = model;
+        this.promptBundleVersion = promptBundleVersion;
     }
 
     async queryChatModel(messages: ChatMessage[]): Promise<Result<string, Error>> {
-        const body = this.isResponsesUrl()
-            ? this.createResponsesBody(messages)
-            : this.createChatCompletionsBody(messages);
+        return (await this.query(messages))
+            .map((result) => result.text)
+            .mapErr(providerErrorToError);
+    }
 
-        const data = await this.makeRequestWithUnsupportedParameterRetry(body);
-        return this.isResponsesUrl()
-            ? data.map((data) => OpenAIApiClient.extractResponsesText(data))
-            : data.map((data) => data.choices[0].message.content);
+    async query(messages: ChatMessage[]): Promise<Result<CompletionResult, ProviderError>> {
+        const request = this.buildRequest(messages);
+        const startedAt = Date.now();
+        const {result, retryCount} = await this.makeRequestWithUnsupportedParameterRetry(
+            request.body || {},
+            this.safeDiagnostics(messages)
+        );
+
+        const diagnostics: SafeDiagnostics = {
+            ...this.safeDiagnostics(messages),
+            latencyMs: Date.now() - startedAt,
+            retryCount,
+        };
+
+        if (result.isErr()) {
+            const error = {
+                ...result.error,
+                safeDiagnostics: {
+                    ...result.error.safeDiagnostics,
+                    latencyMs: diagnostics.latencyMs,
+                    retryCount,
+                },
+            };
+            recordRequestDiagnostics(error.safeDiagnostics);
+            return err(error);
+        }
+
+        let text: string;
+        try {
+            text = this.parseResponse(result.value).text;
+        } catch (error) {
+            const providerError = createProviderError({
+                provider: "openai",
+                code: "parse_error",
+                message: error instanceof Error ? error.message : String(error),
+                safeDiagnostics: diagnostics,
+            });
+            recordRequestDiagnostics(providerError.safeDiagnostics);
+            return err(providerError);
+        }
+        recordRequestDiagnostics({
+            ...diagnostics,
+            responseCharCount: text.length,
+        });
+        return ok({text});
+    }
+
+    buildRequest(messages: ChatMessage[]): ProviderRequest {
+        return {
+            url: this.url,
+            method: "POST",
+            body: this.isResponsesUrl()
+                ? this.createResponsesBody(messages)
+                : this.createChatCompletionsBody(messages),
+            headers: this.createHeaders(),
+        };
+    }
+
+    parseResponse(data: any): CompletionResult {
+        return {
+            text: this.isResponsesUrl()
+                ? OpenAIApiClient.extractResponsesText(data)
+                : data.choices[0].message.content,
+        };
+    }
+
+    normalizeError(error: Error | string | ProviderError, diagnostics = this.safeDiagnostics([])): ProviderError {
+        if (typeof error === "object" && "safeDiagnostics" in error) {
+            return error;
+        }
+        return errorToProviderError("openai", error, diagnostics);
     }
 
     private createHeaders(): Record<string, string> {
@@ -54,16 +146,18 @@ class OpenAIApiClient implements ApiClient {
     }
 
     private createChatCompletionsBody(messages: ChatMessage[]): Record<string, unknown> {
-        const {max_tokens, ...modelOptions} = this.modelOptions;
+        const capabilities = this.capabilitiesFor(this.model);
+        const modelOptions = optionsForCapabilities(this.modelOptions, capabilities);
         return {
             messages,
             model: this.model,
             ...modelOptions,
-            max_completion_tokens: max_tokens,
+            ...(capabilities.supportsMaxTokens ? {max_completion_tokens: this.modelOptions.max_tokens} : {}),
         };
     }
 
     private createResponsesBody(messages: ChatMessage[]): Record<string, unknown> {
+        const capabilities = this.capabilitiesFor(this.model);
         const instructions = messages
             .filter((message) => message.role === "system")
             .map((message) => message.content)
@@ -78,12 +172,11 @@ class OpenAIApiClient implements ApiClient {
         const body: any = {
             model: this.model,
             input,
-            max_output_tokens: this.modelOptions.max_tokens,
             store: false,
+            ...optionsForCapabilities(this.modelOptions, capabilities),
         };
-        if (!this.isOpenAIReasoningModel()) {
-            body.temperature = this.modelOptions.temperature;
-            body.top_p = this.modelOptions.top_p;
+        if (capabilities.supportsMaxTokens) {
+            body.max_output_tokens = this.modelOptions.max_tokens;
         }
         if (instructions) {
             body.instructions = instructions;
@@ -91,26 +184,42 @@ class OpenAIApiClient implements ApiClient {
         return body;
     }
 
-    private async makeRequestWithUnsupportedParameterRetry(body: Record<string, unknown>): Promise<Result<any, Error>> {
+    private async makeRequestWithUnsupportedParameterRetry(
+        body: Record<string, unknown>,
+        diagnostics: SafeDiagnostics
+    ): Promise<{result: Result<any, ProviderError>; retryCount: number}> {
         let requestBody = {...body};
         const removedParameters = new Set<string>();
+        let retryCount = 0;
 
         while (true) {
-            const data = await makeAPIRequest(this.url, "POST", requestBody, this.createHeaders());
+            const data = await makeProviderRequest(
+                "openai",
+                this.url,
+                "POST",
+                requestBody,
+                this.createHeaders(),
+                {
+                    ...diagnostics,
+                    retryCount,
+                }
+            );
             if (data.isOk()) {
-                return data;
+                return {result: data, retryCount};
             }
 
-            const unsupportedParameter = OpenAIApiClient.extractUnsupportedParameter(data.error.message);
+            const unsupportedParameter = data.error.unsupportedParameter
+                || extractUnsupportedParameter(data.error.message);
             if (
                 unsupportedParameter === null ||
                 removedParameters.has(unsupportedParameter) ||
                 !(unsupportedParameter in requestBody)
             ) {
-                return data;
+                return {result: data, retryCount};
             }
 
             removedParameters.add(unsupportedParameter);
+            retryCount += 1;
             const {[unsupportedParameter]: _unsupported, ...nextBody} = requestBody;
             requestBody = nextBody;
         }
@@ -118,20 +227,25 @@ class OpenAIApiClient implements ApiClient {
 
     private isResponsesUrl(): boolean {
         try {
-            return new URL(this.url).pathname.replace(/\/$/, "").endsWith("/responses");
+            return isResponsesEndpoint(this.url);
         } catch {
-            return this.url.split("?")[0].replace(/\/$/, "").endsWith("/responses");
+            return isResponsesEndpoint(this.url);
         }
     }
 
-    private isOpenAIReasoningModel(): boolean {
-        const model = this.model.toLowerCase();
-        return model.startsWith("gpt-5") || /^o\d/.test(model);
+    capabilitiesFor(model: string): ModelCapabilities {
+        return defaultModelCapabilities("openai", model, this.url);
     }
 
-    private static extractUnsupportedParameter(message: string): string | null {
-        const match = message.match(/Unsupported parameter:\s*'([^']+)'/i);
-        return match ? match[1] : null;
+    private safeDiagnostics(messages: ChatMessage[]): SafeDiagnostics {
+        return {
+            provider: "openai",
+            model: this.model || "Not set",
+            endpoint: sanitizeEndpoint(this.url),
+            requestCharCount: messagesCharCount(messages),
+            promptBundleVersion: this.promptBundleVersion,
+            capabilities: this.capabilitiesFor(this.model),
+        };
     }
 
     private static extractResponsesText(data: any): string {
@@ -161,7 +275,7 @@ class OpenAIApiClient implements ApiClient {
             .join("");
     }
 
-    async checkIfConfiguredCorrectly(): Promise<string[]> {
+    async checkConnection(): Promise<Result<void, ProviderError>> {
         const errors: string[] = [];
         if (!this.url) {
             errors.push("OpenAI API url is not set");
@@ -170,17 +284,58 @@ class OpenAIApiClient implements ApiClient {
             errors.push("OpenAI model is not set");
         }
         if (errors.length > 0) {
-            // api check is not possible without passing previous checks so return early
-            return errors;
+            return err(createProviderError({
+                provider: "openai",
+                code: "not_configured",
+                message: errors.join("\n"),
+                safeDiagnostics: {
+                    provider: "openai",
+                    model: this.model || "Not set",
+                    endpoint: sanitizeEndpoint(this.url),
+                    promptBundleVersion: this.promptBundleVersion,
+                    capabilities: this.capabilitiesFor(this.model),
+                },
+            }));
         }
-        const result = await this.queryChatModel([
+        const result = await this.query([
             {content: "Say hello world and nothing else.", role: "user"},
         ]);
 
         if (result.isErr()) {
-            errors.push(result.error.message);
+            return err(result.error);
         }
-        return errors;
+        return ok(undefined);
+    }
+
+    async checkIfConfiguredCorrectly(): Promise<string[]> {
+        const result = await this.checkConnection();
+        return result.isErr() ? [humanizeProviderError(result.error)] : [];
+    }
+
+    async listModels(): Promise<Result<ModelSelection[], ProviderError>> {
+        const parsed = new URL(this.url || "https://api.openai.com/v1/responses");
+        parsed.pathname = "/v1/models";
+        parsed.search = "";
+        const response = await makeProviderRequest(
+            "openai",
+            parsed.toString(),
+            "GET",
+            undefined,
+            this.createHeaders(),
+            {
+                provider: "openai",
+                model: this.model || "Not set",
+                endpoint: sanitizeEndpoint(parsed.toString()),
+                promptBundleVersion: this.promptBundleVersion,
+                capabilities: this.capabilitiesFor(this.model),
+            }
+        );
+        return response.map((data: any) => {
+            const models = Array.isArray(data.data) ? data.data : [];
+            return models
+                .filter((model: any) => model && model.id)
+                .map((model: any) => ({id: model.id, name: model.id}));
+        });
     }
 }
 

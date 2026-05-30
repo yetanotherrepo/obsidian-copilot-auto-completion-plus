@@ -67,3 +67,10 @@ export const fewShotExampleSchema = z.object({
 }).strict();
 
 export type FewShotExample = z.infer<typeof fewShotExampleSchema>;
+
+export const promptBundleVersionSchema = z.enum([
+    "thought_answer_v1",
+    "answer_only_v2",
+]);
+
+export type PromptBundleVersion = z.infer<typeof promptBundleVersionSchema>;

@@ -1,4 +1,6 @@
 import {Settings} from "../settings/versions";
+import {diagnosticsToMarkdown, getLastRequestDiagnostics} from "../prediction_services/diagnostics";
+import {ProviderError, SafeDiagnostics, extractProviderError, humanizeProviderError, sanitizeEndpoint} from "../prediction_services/provider";
 
 export const GITHUB_REPOSITORY_URL = "https://github.com/yetanotherrepo/obsidian-copilot-auto-completion-plus";
 
@@ -8,7 +10,8 @@ export interface IssueReportContext {
     source: IssueSource;
     pluginVersion?: string;
     settings?: Settings;
-    error?: Error | string;
+    error?: Error | string | ProviderError;
+    diagnostics?: SafeDiagnostics;
 }
 
 export function buildGitHubIssueUrl(context: IssueReportContext): string {
@@ -24,6 +27,9 @@ export function openGitHubIssue(context: IssueReportContext): void {
 
 export function issueBody(context: IssueReportContext): string {
     const settings = context.settings;
+    const diagnostics = context.diagnostics
+        || providerDiagnostics(context.error)
+        || getLastRequestDiagnostics();
     return [
         "## What happened?",
         "",
@@ -42,6 +48,7 @@ export function issueBody(context: IssueReportContext): string {
         `- API URL: ${settings ? selectedEndpoint(settings) : "Unknown"}`,
         `- Error: ${errorMessage(context.error)}`,
         `- User agent: ${typeof navigator === "undefined" ? "Unknown" : navigator.userAgent}`,
+        ...diagnosticsToMarkdown(diagnostics),
         "",
         "## Privacy note",
         "",
@@ -88,42 +95,47 @@ function selectedModel(settings: Settings): string {
 
 function selectedEndpoint(settings: Settings): string {
     if (settings.apiProvider === "openai") {
-        return sanitizeUrl(settings.openAIApiSettings.url);
+        return sanitizeEndpoint(settings.openAIApiSettings.url);
     }
     if (settings.apiProvider === "anthropic") {
-        return sanitizeUrl(settings.anthropicApiSettings.url);
+        return sanitizeEndpoint(settings.anthropicApiSettings.url);
     }
     if (settings.apiProvider === "gemini") {
-        return sanitizeUrl(settings.geminiApiSettings.url);
+        return sanitizeEndpoint(settings.geminiApiSettings.url);
     }
     if (settings.apiProvider === "azure") {
-        return sanitizeUrl(settings.azureOAIApiSettings.url);
+        return sanitizeEndpoint(settings.azureOAIApiSettings.url);
     }
-    return sanitizeUrl(settings.ollamaApiSettings.url);
+    return sanitizeEndpoint(settings.ollamaApiSettings.url);
 }
 
-function sanitizeUrl(value: string): string {
-    if (!value) {
-        return "Not set";
-    }
-    try {
-        const url = new URL(value);
-        url.username = "";
-        url.password = "";
-        url.search = "";
-        url.hash = "";
-        return url.toString();
-    } catch {
-        return "Custom URL";
-    }
-}
-
-function errorMessage(error: Error | string | undefined): string {
+function errorMessage(error: Error | string | ProviderError | undefined): string {
     if (error === undefined) {
         return "Not provided";
     }
+    if (isProviderError(error)) {
+        return humanizeProviderError(error);
+    }
     if (error instanceof Error) {
-        return error.message;
+        const providerError = extractProviderError(error);
+        return providerError ? humanizeProviderError(providerError) : error.message;
     }
     return error;
+}
+
+function providerDiagnostics(error: Error | string | ProviderError | undefined): SafeDiagnostics | null {
+    if (!error) {
+        return null;
+    }
+    if (isProviderError(error)) {
+        return error.safeDiagnostics;
+    }
+    if (error instanceof Error) {
+        return extractProviderError(error)?.safeDiagnostics || null;
+    }
+    return null;
+}
+
+function isProviderError(error: unknown): error is ProviderError {
+    return Boolean(error && typeof error === "object" && "safeDiagnostics" in error && "provider" in error);
 }

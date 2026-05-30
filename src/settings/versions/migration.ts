@@ -9,7 +9,11 @@ import {
     Settings as SettingsV1,
     settingsSchema as settingsSchemaV1
 } from "./v1/v1";
-import {findEqualPaths, isRegexValid} from "../utils";
+import {
+    DEFAULT_SETTINGS as DEFAULT_SETTINGS_V2,
+    Settings as SettingsV2,
+    settingsSchema as settingsSchemaV2
+} from "./v2/v2";
 
 export function migrateFromV0ToV1(settings: SettingsV0): SettingsV1 {
     // eslint-disable  @typescript-eslint/no-explicit-any
@@ -48,6 +52,29 @@ export function migrateFromV0ToV1(settings: SettingsV0): SettingsV1 {
     return settingsSchemaV1.parse(updatedSettings);
 }
 
+export function migrateFromV1ToV2(settings: SettingsV1): SettingsV2 {
+    const updatedSettings: any = cloneJson(settings);
+    const promptBundleWasDefault =
+        areEqual(updatedSettings.systemMessage, DEFAULT_SETTINGS_V1.systemMessage)
+        && areEqual(updatedSettings.userMessageTemplate, DEFAULT_SETTINGS_V1.userMessageTemplate)
+        && areEqual(updatedSettings.chainOfThoughRemovalRegex, DEFAULT_SETTINGS_V1.chainOfThoughRemovalRegex)
+        && areEqual(updatedSettings.fewShotExamples, DEFAULT_SETTINGS_V1.fewShotExamples);
+
+    updatedSettings.version = "2";
+    updatedSettings.redactSensitiveData = DEFAULT_SETTINGS_V2.redactSensitiveData;
+
+    if (promptBundleWasDefault) {
+        updatedSettings.systemMessage = DEFAULT_SETTINGS_V2.systemMessage;
+        updatedSettings.fewShotExamples = DEFAULT_SETTINGS_V2.fewShotExamples;
+        updatedSettings.chainOfThoughRemovalRegex = DEFAULT_SETTINGS_V2.chainOfThoughRemovalRegex;
+        updatedSettings.promptBundleVersion = DEFAULT_SETTINGS_V2.promptBundleVersion;
+    } else {
+        updatedSettings.promptBundleVersion = "thought_answer_v1";
+    }
+
+    return settingsSchemaV2.parse(updatedSettings);
+}
+
 
 function migrateDefaultSettings(setting: any, previousDefault: any, currentDefault: any): any {
     const unchangedDefaultProperties = findEqualPaths(setting, previousDefault);
@@ -68,6 +95,11 @@ export const isSettingsV0 = (settings: object): boolean => {
 
 export const isSettingsV1 = (settings: object): boolean => {
     const result = settingsSchemaV1.safeParse(settings);
+    return result.success;
+}
+
+export const isSettingsV2 = (settings: object): boolean => {
+    const result = settingsSchemaV2.safeParse(settings);
     return result.success;
 }
 
@@ -120,4 +152,68 @@ function setPath(value: any, path: string, newValue: any): void {
         }
         current = current[segment];
     });
+}
+
+function areEqual(value1: any, value2: any): boolean {
+    if (value1 === value2) {
+        return true;
+    }
+    try {
+        return JSON.stringify(value1) === JSON.stringify(value2);
+    } catch {
+        return false;
+    }
+}
+
+function isRegexValid(value: string): boolean {
+    try {
+        const regex = new RegExp(value);
+        regex.test("");
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+function findEqualPaths(obj1: any, obj2: any, basePath = ''): string[] {
+    let paths: string[] = [];
+
+    if (
+        basePath === ''
+        && (
+            !isRecordLike(obj1)
+            || !isRecordLike(obj2)
+            || Array.isArray(obj1)
+            || Array.isArray(obj2)
+            || typeof obj1 === "number"
+            || typeof obj2 === "number"
+            || typeof obj1 === "string"
+            || typeof obj2 === "string"
+        )
+    ) {
+        return [];
+    }
+
+    function iterateKeys(value: any, key: string | number): void {
+        const pathPart = typeof key === "number" ? `[${key}]` : key;
+        const path = basePath ? `${basePath}.${pathPart}` : `${pathPart}`;
+        const otherValue = obj2[key];
+        if (isRecordLike(value) && isRecordLike(otherValue)) {
+            paths = paths.concat(findEqualPaths(value, otherValue, path));
+        } else if (typeof value !== "function" && areEqual(value, otherValue)) {
+            paths.push(path);
+        }
+    }
+
+    if (Array.isArray(obj1) && Array.isArray(obj2)) {
+        obj1.forEach((value, index) => iterateKeys(value, index));
+    } else {
+        Object.entries(obj1).forEach(([key, value]) => iterateKeys(value, key));
+    }
+
+    return paths;
+}
+
+function isRecordLike(value: any): boolean {
+    return typeof value === "object" && value !== null;
 }

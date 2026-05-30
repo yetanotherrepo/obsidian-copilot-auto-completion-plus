@@ -2,13 +2,10 @@ import * as React from "react";
 import {useState} from "react";
 import SettingsItem from "./SettingsItem";
 import {Notice} from "obsidian";
-import AzureOAIClient from "../../prediction_services/api_clients/AzureOAIClient";
-import OpenAIApiClient from "../../prediction_services/api_clients/OpenAIApiClient";
 import {Settings} from "../versions";
-import OllamaApiClient from "../../prediction_services/api_clients/OllamaApiClient";
-import AnthropicApiClient from "../../prediction_services/api_clients/AnthropicApiClient";
-import GeminiApiClient from "../../prediction_services/api_clients/GeminiApiClient";
 import {openGitHubIssue} from "../../support/github_issues";
+import {ProviderError, humanizeProviderError} from "../../prediction_services/provider";
+import {createProviderAdapter} from "../../prediction_services/api_clients/factory";
 
 interface IProps {
     pluginVersion: string;
@@ -25,29 +22,12 @@ enum Status {
 export default function ConnectivityCheck(props: IProps): React.JSX.Element {
     const [status, setStatus] = useState<Status>(Status.NotStarted);
     const [errors, setErrors] = useState<string[]>([]);
+    const [providerError, setProviderError] = useState<ProviderError | null>(null);
 
     React.useEffect(() => {
         setStatus(Status.NotStarted);
+        setProviderError(null);
     }, [props.settings]);
-
-    const createClient = () => {
-        if (props.settings.apiProvider === "azure") {
-            return AzureOAIClient.fromSettings(props.settings);
-        }
-        if (props.settings.apiProvider === "openai") {
-            return OpenAIApiClient.fromSettings(props.settings);
-        }
-        if (props.settings.apiProvider === "ollama") {
-            return OllamaApiClient.fromSettings(props.settings);
-        }
-        if (props.settings.apiProvider === "anthropic") {
-            return AnthropicApiClient.fromSettings(props.settings);
-        }
-        if (props.settings.apiProvider === "gemini") {
-            return GeminiApiClient.fromSettings(props.settings);
-        }
-        throw new Error("Unknown API provider");
-    };
 
     const onClickConnectionButton = async () => {
         if (status === Status.Loading) {
@@ -55,11 +35,13 @@ export default function ConnectivityCheck(props: IProps): React.JSX.Element {
         }
 
         setStatus(Status.Loading);
+        setProviderError(null);
         try {
-            const client = createClient();
-            const _errors = await client.checkIfConfiguredCorrectly();
-            setErrors(_errors);
-            if (_errors.length > 0) {
+            const client = createProviderAdapter(props.settings);
+            const result = await client.checkConnection();
+            if (result.isErr()) {
+                setProviderError(result.error);
+                setErrors([humanizeProviderError(result.error)]);
                 new Notice(
                     `Cannot connect to the ${props.settings.apiProvider} API. Please check your settings.`
                 );
@@ -67,6 +49,7 @@ export default function ConnectivityCheck(props: IProps): React.JSX.Element {
                 return;
             }
 
+            setErrors([]);
             new Notice(
                 `Successfully connected to the ${props.settings.apiProvider} API.`
             );
@@ -155,7 +138,8 @@ export default function ConnectivityCheck(props: IProps): React.JSX.Element {
                         source: "connectivity-check",
                         pluginVersion: props.pluginVersion,
                         settings: props.settings,
-                        error: errors.join("\n"),
+                        error: providerError || errors.join("\n"),
+                        diagnostics: providerError?.safeDiagnostics,
                     })}
                 >
                     Report issue

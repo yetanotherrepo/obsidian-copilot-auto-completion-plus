@@ -2,7 +2,7 @@
 When working with sensitive files, you might wish to prevent their content from being sent to an API provider, such as Azure OpenAI or OpenAI. 
 To ensure this never occurs, you can define git-ignore-like glob patterns in the settings of this repository. 
 Upon opening any of these files, the plugin will automatically deactivate and show a 'disabled' status in the bottom menu. 
-The default settings include the glob pattern `**/secrets/**`, which guarantees that the plugin deactivates itself whenever a file within the `secrets` folder is accessed.
+The default settings include the glob pattern `**/secret/**`, which guarantees that the plugin deactivates itself whenever a file within a `secret` folder is accessed.
 
 ![disabled](../../assets/ignore-status-secret.jpg)
 
@@ -29,3 +29,10 @@ Each line in this setting is treated as a distinct ignore pattern.
 This plugin utilizes the [micromatch](https://github.com/micromatch/micromatch#matching-features) package to interpret and match these ignore patterns. 
 The [Micromatch](https://github.com/micromatch/micromatch#matching-features) documentation offers extensive details on possible matching patterns; consult it for further insights.
 
+You can also disable completions for a single note by adding this frontmatter:
+
+```yaml
+---
+copilot: false
+---
+```

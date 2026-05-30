@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0
+- Add provider adapter types, model capability detection, and normalized provider errors.
+- Add local-only request diagnostics and safer issue reports with provider error codes.
+- Add answer-only default prompt migration while preserving customized legacy prompts.
+- Add optional sensitive-data redaction and `copilot: false` frontmatter disable.
+- Expand provider and prediction pipeline tests.
+- Update docs, issue forms, and GitHub Actions release checks for Node 24-compatible actions.
+
 ## 1.2.6
 - Add GitHub issue reporting from settings, connection checks, and prediction errors.
 - Include safe diagnostics in prefilled issue reports without API keys or note contents.

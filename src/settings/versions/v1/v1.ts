@@ -39,7 +39,7 @@ import {
     modelOptionsSchema,
     openAIApiSettingsSchema
 } from "../shared";
-import {isRegexValid, isValidIgnorePattern} from "../../utils";
+import * as mm from "micromatch";
 
 export const triggerSchema = z.object({
     type: z.enum(['string', 'regex']),
@@ -224,3 +224,22 @@ ANSWER: here, you write the text that should be at the location of <mask/>
 export type Settings = z.input<typeof settingsSchema>;
 export type Trigger = z.infer<typeof triggerSchema>;
 export type PluginData = z.infer<typeof pluginDataSchema>;
+
+function isRegexValid(value: string): boolean {
+    try {
+        const regex = new RegExp(value);
+        regex.test("");
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+function isValidIgnorePattern(value: string): boolean {
+    try {
+        mm.isMatch("", value);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}

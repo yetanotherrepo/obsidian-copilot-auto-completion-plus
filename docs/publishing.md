@@ -1,59 +1,41 @@
 # Publishing Copilot Auto Completion Plus
 
-## GitHub release 1.2.3
+## Release flow
 
-Use the release tag `1.2.3`. It must match the `version` field in `manifest.json`.
+1. Update `package.json`, `manifest.json`, `versions.json`, and `CHANGELOG.md` for the new version.
+2. Run the local validation checks:
 
-Release title:
-
-```text
-Copilot Auto Completion Plus 1.2.3
+```bash
+npm run build
+npm run tests -- --runInBand
+npm run docs:check
+npm audit
 ```
 
-Release notes:
+3. Commit the release changes.
+4. Create and push a matching git tag.
+5. The release workflow builds the plugin, runs tests, checks docs/release hygiene, creates artifact attestations, and publishes the release.
 
-```markdown
-## What's new
+## Release assets
 
-- Adds Anthropic and Gemini API providers.
-- Adds refreshable model dropdowns for OpenAI, Anthropic, and Gemini.
-- Uses the OpenAI Responses API by default for OpenAI while preserving OpenAI-compatible Chat Completions URLs.
-- Updates OpenAI Chat Completions requests to use `max_completion_tokens`.
-- Generates GitHub artifact attestations for release assets.
-
-## Validation
-
-- `npm run build`
-- `npm run tests -- --runInBand`
-- `npm audit`
-```
-
-Upload these release assets:
+Only these assets are supported by Obsidian and should be uploaded:
 
 - `main.js`
 - `manifest.json`
 - `styles.css`
 
-The prepared local zip is:
+Do not upload archives or extra files. Obsidian will not download them, and the automated community review reports them as additional release assets.
 
-```text
-/private/tmp/copilot-auto-completion-plus-1.2.3-release.zip
-```
+The release workflow generates GitHub artifact attestations for all three assets so users can verify that they were built from this repository.
 
-## Obsidian Community submission
+## Obsidian Community portal
 
 The old `obsidianmd/obsidian-releases` pull-request route may be disabled by the repository owners. If GitHub says that owners disabled opening pull requests, use the Obsidian Community portal instead:
 
 1. Sign in at `https://community.obsidian.md`.
 2. Open your account's plugin management page.
-3. Choose the new plugin submission flow.
-4. Submit the repository URL:
-
-```text
-https://github.com/yetanotherrepo/obsidian-copilot-auto-completion-plus
-```
-
-Repository URL:
+3. Submit or edit the plugin listing.
+4. Use this repository:
 
 ```text
 https://github.com/yetanotherrepo/obsidian-copilot-auto-completion-plus

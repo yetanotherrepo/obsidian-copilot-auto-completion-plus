@@ -127,6 +127,15 @@ class EventListener implements EventHandler, SettingsObserver {
         return tags.some(tag => ignoredTags.includes(tag));
     }
 
+    public currentFileDisablesCopilot(): boolean {
+        if (this.currentFile === null) {
+            return false;
+        }
+
+        const metadata = this.app.metadataCache.getFileCache(this.currentFile);
+        return metadata?.frontmatter?.copilot === false;
+    }
+
 
     insertCurrentSuggestion(suggestion: string): void {
         if (this.view === null) {

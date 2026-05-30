@@ -113,7 +113,7 @@ The plugin is designed to be highly customizable, allowing you to tailor the fol
 - **[Triggers](docs/personalization%20and%20settings.md#triggers)**: Define the text after which the plugin should suggest a completion.
 - **[Trigger Delay](docs/personalization%20and%20settings.md#trigger-delay)**: Set the duration the plugin should wait before offering a suggestion to minimize costs.
 - **[Prefix/Suffix Size](docs/personalization%20and%20settings.md#preprocessing)**: Determine the amount of text to include in the prediction request.
-- **[Text Generation Settings](docs/personalization%20and%20settings.md#model-options)**: Adjust common text generation parameters like temperature, top-k, max tokens, frequency penalty, and more.
+- **[Text Generation Settings](docs/personalization%20and%20settings.md#model-options)**: Adjust model-supported parameters like temperature, top-p, max tokens, frequency penalty, and more.
 - **[Custom Few-Shot Examples](docs/personalization%20and%20settings.md#customize-the-few-shot-examples)**: Add your own few-shot examples to enhance the model's accuracy or to match your writing style.
 - **[Custom System Prompt](docs/personalization%20and%20settings.md#customize-the-system-prompts)**: Personalize the system prompt to refine model performance or to suit your style and language preferences.
 

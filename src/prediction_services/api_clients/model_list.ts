@@ -1,12 +1,10 @@
 import {err, Result} from "neverthrow";
 
 import {Settings} from "../../settings/versions";
-import {makeAPIRequest} from "./utils";
+import {makeProviderRequest} from "./utils";
+import {ModelSelection, providerErrorToError, sanitizeEndpoint} from "../provider";
 
-export interface ModelSelection {
-    id: string;
-    name: string;
-}
+export type {ModelSelection} from "../provider";
 
 type CloudModelProvider = "openai" | "anthropic" | "gemini";
 
@@ -109,7 +107,12 @@ async function fetchOpenAIModels(settings: Settings): Promise<Result<ModelSelect
         headers.Authorization = `Bearer ${settings.openAIApiSettings.key}`;
     }
 
-    const response = await makeAPIRequest(openAIModelsUrl(settings), "GET", undefined, headers);
+    const modelsUrl = openAIModelsUrl(settings);
+    const response = (await makeProviderRequest("openai", modelsUrl, "GET", undefined, headers, {
+        provider: "openai",
+        model: settings.openAIApiSettings.model || "Not set",
+        endpoint: sanitizeEndpoint(modelsUrl),
+    })).mapErr(providerErrorToError);
     return response.map((data: any) => {
         const models = Array.isArray(data.data) ? data.data : [];
         return models
@@ -120,11 +123,16 @@ async function fetchOpenAIModels(settings: Settings): Promise<Result<ModelSelect
 }
 
 async function fetchAnthropicModels(settings: Settings): Promise<Result<ModelSelection[], Error>> {
-    const response = await makeAPIRequest(anthropicModelsUrl(settings), "GET", undefined, {
+    const modelsUrl = anthropicModelsUrl(settings);
+    const response = (await makeProviderRequest("anthropic", modelsUrl, "GET", undefined, {
         "Content-Type": "application/json",
         "x-api-key": settings.anthropicApiSettings.key,
         "anthropic-version": "2023-06-01",
-    });
+    }, {
+        provider: "anthropic",
+        model: settings.anthropicApiSettings.model || "Not set",
+        endpoint: sanitizeEndpoint(modelsUrl),
+    })).mapErr(providerErrorToError);
     return response.map((data: any) => {
         const models = Array.isArray(data.data) ? data.data : [];
         return models.map((model: any) => ({
@@ -135,9 +143,14 @@ async function fetchAnthropicModels(settings: Settings): Promise<Result<ModelSel
 }
 
 async function fetchGeminiModels(settings: Settings): Promise<Result<ModelSelection[], Error>> {
-    const response = await makeAPIRequest(geminiModelsUrl(settings), "GET", undefined, {
+    const modelsUrl = geminiModelsUrl(settings);
+    const response = (await makeProviderRequest("gemini", modelsUrl, "GET", undefined, {
         "Content-Type": "application/json",
-    });
+    }, {
+        provider: "gemini",
+        model: settings.geminiApiSettings.model || "Not set",
+        endpoint: sanitizeEndpoint(settings.geminiApiSettings.url),
+    })).mapErr(providerErrorToError);
     return response.map((data: any) => {
         const models = Array.isArray(data.models) ? data.models : [];
         return models

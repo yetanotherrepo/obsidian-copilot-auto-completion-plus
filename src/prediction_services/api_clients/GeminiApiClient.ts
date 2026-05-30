@@ -1,20 +1,39 @@
 import {ApiClient, ChatMessage, ModelOptions} from "../types";
 import {Settings} from "../../settings/versions";
-import {Result} from "neverthrow";
-import {makeAPIRequest} from "./utils";
+import {err, ok, Result} from "neverthrow";
+import {makeProviderRequest} from "./utils";
+import {
+    CompletionResult,
+    ModelCapabilities,
+    ModelSelection,
+    ProviderAdapter,
+    ProviderError,
+    ProviderRequest,
+    SafeDiagnostics,
+    createProviderError,
+    defaultModelCapabilities,
+    errorToProviderError,
+    humanizeProviderError,
+    messagesCharCount,
+    providerErrorToError,
+    sanitizeEndpoint,
+} from "../provider";
+import {recordRequestDiagnostics} from "../diagnostics";
 
-class GeminiApiClient implements ApiClient {
+class GeminiApiClient implements ApiClient, ProviderAdapter {
     private readonly apiKey: string;
     private readonly url: string;
     private readonly model: string;
     private readonly modelOptions: ModelOptions;
+    private readonly promptBundleVersion: string;
 
     static fromSettings(settings: Settings): GeminiApiClient {
         return new GeminiApiClient(
             settings.geminiApiSettings.key,
             settings.geminiApiSettings.url,
             settings.geminiApiSettings.model,
-            settings.modelOptions
+            settings.modelOptions,
+            settings.promptBundleVersion
         );
     }
 
@@ -22,15 +41,73 @@ class GeminiApiClient implements ApiClient {
         apiKey: string,
         url: string,
         model: string,
-        modelOptions: ModelOptions
+        modelOptions: ModelOptions,
+        promptBundleVersion = "Unknown"
     ) {
         this.apiKey = apiKey;
         this.url = url;
         this.model = model.replace(/^models\//, "");
         this.modelOptions = modelOptions;
+        this.promptBundleVersion = promptBundleVersion;
     }
 
     async queryChatModel(messages: ChatMessage[]): Promise<Result<string, Error>> {
+        return (await this.query(messages))
+            .map((result) => result.text)
+            .mapErr(providerErrorToError);
+    }
+
+    async query(messages: ChatMessage[]): Promise<Result<CompletionResult, ProviderError>> {
+        const request = this.buildRequest(messages);
+        const diagnostics = this.safeDiagnostics(messages);
+        const startedAt = Date.now();
+        const data = await makeProviderRequest(
+            "gemini",
+            request.url,
+            request.method,
+            request.body,
+            request.headers,
+            diagnostics
+        );
+        const finishedDiagnostics = {
+            ...diagnostics,
+            latencyMs: Date.now() - startedAt,
+            retryCount: 0,
+        };
+
+        if (data.isErr()) {
+            const error = {
+                ...data.error,
+                safeDiagnostics: {
+                    ...data.error.safeDiagnostics,
+                    ...finishedDiagnostics,
+                    errorCode: data.error.code,
+                },
+            };
+            recordRequestDiagnostics(error.safeDiagnostics);
+            return err(error);
+        }
+
+        try {
+            const result = this.parseResponse(data.value);
+            recordRequestDiagnostics({
+                ...finishedDiagnostics,
+                responseCharCount: result.text.length,
+            });
+            return ok(result);
+        } catch (error) {
+            const providerError = createProviderError({
+                provider: "gemini",
+                code: "parse_error",
+                message: error instanceof Error ? error.message : String(error),
+                safeDiagnostics: finishedDiagnostics,
+            });
+            recordRequestDiagnostics(providerError.safeDiagnostics);
+            return err(providerError);
+        }
+    }
+
+    buildRequest(messages: ChatMessage[]): ProviderRequest {
         const systemInstruction = messages
             .filter((message) => message.role === "system")
             .map((message) => message.content)
@@ -58,16 +135,48 @@ class GeminiApiClient implements ApiClient {
             };
         }
 
-        const data = await makeAPIRequest(this.generateContentUrl(), "POST", body, {
-            "Content-Type": "application/json",
-        });
-        return data.map((data) => (((data.candidates || [])[0] || {}).content?.parts || [])
-            .filter((part: any) => part.text)
-            .map((part: any) => part.text)
-            .join(""));
+        return {
+            url: this.generateContentUrl(),
+            method: "POST",
+            body,
+            headers: {
+                "Content-Type": "application/json",
+            },
+        };
     }
 
-    async checkIfConfiguredCorrectly(): Promise<string[]> {
+    parseResponse(data: any): CompletionResult {
+        return {
+            text: (((data.candidates || [])[0] || {}).content?.parts || [])
+            .filter((part: any) => part.text)
+            .map((part: any) => part.text)
+            .join(""),
+        };
+    }
+
+    normalizeError(error: Error | string | ProviderError, diagnostics = this.safeDiagnostics([])): ProviderError {
+        if (typeof error === "object" && "safeDiagnostics" in error) {
+            return error;
+        }
+        return errorToProviderError("gemini", error, diagnostics);
+    }
+
+    capabilitiesFor(model: string): ModelCapabilities {
+        return defaultModelCapabilities("gemini", model, this.url);
+    }
+
+    private safeDiagnostics(messages: ChatMessage[]): SafeDiagnostics {
+        return {
+            provider: "gemini",
+            model: this.model || "Not set",
+            endpoint: sanitizeEndpoint(this.url),
+            requestCharCount: messagesCharCount(messages),
+            promptBundleVersion: this.promptBundleVersion,
+            capabilities: this.capabilitiesFor(this.model),
+        };
+    }
+
+    async checkConnection(): Promise<Result<void, ProviderError>> {
         const errors: string[] = [];
         if (!this.apiKey) {
             errors.push("Gemini API key is not set.");
@@ -79,17 +188,63 @@ class GeminiApiClient implements ApiClient {
             errors.push("Gemini model is not set.");
         }
         if (errors.length > 0) {
-            return errors;
+            return err(createProviderError({
+                provider: "gemini",
+                code: "not_configured",
+                message: errors.join("\n"),
+                safeDiagnostics: {
+                    provider: "gemini",
+                    model: this.model || "Not set",
+                    endpoint: sanitizeEndpoint(this.url),
+                    promptBundleVersion: this.promptBundleVersion,
+                    capabilities: this.capabilitiesFor(this.model),
+                },
+            }));
         }
 
-        const result = await this.queryChatModel([
+        const result = await this.query([
             {content: "Say hello world and nothing else.", role: "user"},
         ]);
 
         if (result.isErr()) {
-            errors.push(result.error.message);
+            return err(result.error);
         }
-        return errors;
+        return ok(undefined);
+    }
+
+    async checkIfConfiguredCorrectly(): Promise<string[]> {
+        const result = await this.checkConnection();
+        return result.isErr() ? [humanizeProviderError(result.error)] : [];
+    }
+
+    async listModels(): Promise<Result<ModelSelection[], ProviderError>> {
+        const response = await makeProviderRequest(
+            "gemini",
+            this.modelsUrl(),
+            "GET",
+            undefined,
+            {"Content-Type": "application/json"},
+            {
+                provider: "gemini",
+                model: this.model || "Not set",
+                endpoint: sanitizeEndpoint(this.url),
+                promptBundleVersion: this.promptBundleVersion,
+                capabilities: this.capabilitiesFor(this.model),
+            }
+        );
+        return response.map((data: any) => {
+            const models = Array.isArray(data.models) ? data.models : [];
+            return models
+                .filter((model: any) => (model.supportedGenerationMethods || []).includes("generateContent"))
+                .map((model: any) => {
+                    const id = (model.name || "").replace(/^models\//, "");
+                    return {
+                        id,
+                        name: model.displayName || id,
+                    };
+                })
+                .filter((model: ModelSelection) => model.id.length > 0);
+        });
     }
 
     private generateContentUrl(): string {
@@ -98,6 +253,16 @@ class GeminiApiClient implements ApiClient {
             .replace(/\/$/, "")
             .replace(/\/models$/, "") + `/models/${this.model}:generateContent`;
         parsed.searchParams.set("key", this.apiKey);
+        return parsed.toString();
+    }
+
+    private modelsUrl(): string {
+        const parsed = new URL(this.url || "https://generativelanguage.googleapis.com/v1beta");
+        if (!parsed.pathname.endsWith("/models")) {
+            parsed.pathname = parsed.pathname.replace(/\/$/, "") + "/models";
+        }
+        parsed.searchParams.set("key", this.apiKey);
+        parsed.searchParams.set("pageSize", "1000");
         return parsed.toString();
     }
 }

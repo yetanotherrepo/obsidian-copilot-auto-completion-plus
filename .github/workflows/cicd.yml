@@ -15,25 +15,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v6
     - name: Use Node.js
-      uses: actions/setup-node@v1
+      uses: actions/setup-node@v6
       with:
-        node-version: 20.x
+        node-version: 24.x
+        cache: npm
 
     - name: Build
       id: build
       run: |
-        npm install
+        npm ci
         npm run build
 
-    - uses: pre-commit/action@v2.0.3
+    - uses: pre-commit/action@v3.0.1
 
     - name: Test
       id: test
       run: |
         npm run tests
+
+    - name: Docs and release checks
+      run: npm run docs:check
 
     - name: Check changelog
       run: |
@@ -43,4 +47,3 @@ jobs:
           echo "Error: No release notes found for this version ($VERSION) in CHANGELOG.md"  
           exit 1  
         fi  
-

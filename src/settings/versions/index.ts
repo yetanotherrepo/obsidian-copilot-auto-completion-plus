@@ -1,6 +1,6 @@
-export type {FewShotExample} from "./shared";
-export {DEFAULT_SETTINGS, settingsSchema, pluginDataSchema} from "./v1/v1";
-export type {Settings, Trigger, PluginData} from "./v1/v1";
+export type {FewShotExample, PromptBundleVersion} from "./shared";
+export {DEFAULT_SETTINGS, settingsSchema, pluginDataSchema, DEFAULT_ANSWER_ONLY_SYSTEM_MESSAGE} from "./v2/v2";
+export type {Settings, Trigger, PluginData} from "./v2/v2";
 export {
     MAX_DELAY, MAX_FREQUENCY_PENALTY,
     MAX_MAX_CHAR_LIMIT,

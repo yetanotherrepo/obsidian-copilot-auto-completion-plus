@@ -10,6 +10,7 @@ import {
     getFallbackModels,
     ModelSelection
 } from "../../prediction_services/api_clients/model_list";
+import {defaultModelCapabilities} from "../../prediction_services/provider";
 
 interface IProps {
     settings: Settings;
@@ -57,7 +58,7 @@ export default function ProviderModelDropDownSettingItem(props: IProps): React.J
         new Notice(`Loaded ${loadedModels.length} ${props.settings.apiProvider} models.`);
     };
 
-    const options = modelOptions(models, props.value);
+    const options = modelOptions(models, props.value, props.settings);
     const buttonText = status === Status.Loading ? "Loading..." : "Refresh";
 
     return (
@@ -90,14 +91,51 @@ export default function ProviderModelDropDownSettingItem(props: IProps): React.J
     );
 }
 
-function modelOptions(models: ModelSelection[], currentModel: string): { [key: string]: string } {
+function modelOptions(models: ModelSelection[], currentModel: string, settings: Settings): { [key: string]: string } {
     const options: { [key: string]: string } = {};
     if (currentModel && models.every((model) => model.id !== currentModel)) {
-        options[currentModel] = currentModel;
+        options[currentModel] = `${currentModel} (Custom)`;
     }
 
     for (const model of models) {
-        options[model.id] = model.name;
+        options[model.id] = labelModel(model, settings);
     }
     return options;
+}
+
+function labelModel(model: ModelSelection, settings: Settings): string {
+    const badges: string[] = [];
+    const capabilities = defaultModelCapabilities(
+        settings.apiProvider,
+        model.id,
+        endpointFor(settings)
+    );
+
+    if (capabilities.isReasoningModel) {
+        badges.push("Reasoning");
+    }
+    if (settings.apiProvider === "ollama") {
+        badges.push("Local");
+    }
+    if (getFallbackModels(settings.apiProvider)[0]?.id === model.id) {
+        badges.push("Recommended");
+    }
+
+    return badges.length > 0 ? `${model.name} (${badges.join(", ")})` : model.name;
+}
+
+function endpointFor(settings: Settings): string {
+    if (settings.apiProvider === "openai") {
+        return settings.openAIApiSettings.url;
+    }
+    if (settings.apiProvider === "anthropic") {
+        return settings.anthropicApiSettings.url;
+    }
+    if (settings.apiProvider === "gemini") {
+        return settings.geminiApiSettings.url;
+    }
+    if (settings.apiProvider === "azure") {
+        return settings.azureOAIApiSettings.url;
+    }
+    return settings.ollamaApiSettings.url;
 }

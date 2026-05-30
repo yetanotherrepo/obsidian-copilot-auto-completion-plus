@@ -11,14 +11,15 @@ class DisabledFileSpecificState extends State {
     handleSettingChanged(settings: Settings) {
         if (!this.context.settings.enabled) {
             this.context.transitionToDisabledManualState();
+            return;
         }
-        if (!this.context.isCurrentFilePathIgnored() || !this.context.currentFileContainsIgnoredTag()) {
+        if (!this.context.isCurrentFilePathIgnored() && !this.context.currentFileContainsIgnoredTag() && !this.context.currentFileDisablesCopilot()) {
             this.context.transitionToIdleState();
         }
     }
 
     handleFileChange(file: TFile): void {
-        if (this.context.isCurrentFilePathIgnored() || this.context.currentFileContainsIgnoredTag()) {
+        if (this.context.isCurrentFilePathIgnored() || this.context.currentFileContainsIgnoredTag() || this.context.currentFileDisablesCopilot()) {
             return;
         }
 

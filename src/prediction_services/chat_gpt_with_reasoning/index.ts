@@ -24,6 +24,7 @@ import OllamaApiClient from "../api_clients/OllamaApiClient";
 import {err, ok, Result} from "neverthrow";
 import AnthropicApiClient from "../api_clients/AnthropicApiClient";
 import GeminiApiClient from "../api_clients/GeminiApiClient";
+import SensitiveDataRedactor from "../pre_processors/sensitive_data_redactor";
 
 class ChatGPTWithReasoning implements PredictionService {
     private readonly client: ApiClient;
@@ -64,6 +65,9 @@ class ChatGPTWithReasoning implements PredictionService {
         const preProcessors: PreProcessor[] = [];
         if (settings.dontIncludeDataviews) {
             preProcessors.push(new DataViewRemover());
+        }
+        if (settings.redactSensitiveData) {
+            preProcessors.push(new SensitiveDataRedactor());
         }
         preProcessors.push(
             new LengthLimiter(
@@ -147,12 +151,15 @@ class ChatGPTWithReasoning implements PredictionService {
         ];
 
         if (this.debugMode) {
-            console.debug("Copilot messages sent:\n", messages);
+            console.debug("Copilot request summary:\n", messages.map((message) => ({
+                role: message.role,
+                contentLength: message.content.length,
+            })));
         }
 
         let result = await this.client.queryChatModel(messages);
         if (this.debugMode && result.isOk()) {
-            console.debug("Copilot response:\n", result.value);
+            console.debug("Copilot response summary:\n", {contentLength: result.value.length});
         }
 
         result = this.extractAnswerFromChainOfThoughts(result);
@@ -206,14 +213,18 @@ class ChatGPTWithReasoning implements PredictionService {
         if (result.isErr()) {
             return result;
         }
-        const chainOfThoughts = result.value;
+        const answer = result.value;
+
+        if (this.removePreAnswerGenerationRegex.trim().length === 0) {
+            return ok(answer);
+        }
 
         const regex = new RegExp(this.removePreAnswerGenerationRegex, "gm");
-        const match = regex.exec(chainOfThoughts);
+        const match = regex.exec(answer);
         if (match === null) {
             return err(new Error("No match found"));
         }
-        return ok(chainOfThoughts.replace(regex, ""));
+        return ok(answer.replace(regex, ""));
     }
 
     private checkAgainstGuardRails(
