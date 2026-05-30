@@ -1,5 +1,5 @@
 # vscode
-.vscode 
+.vscode
 
 # Intellij
 *.iml
@@ -32,5 +32,4 @@ demo_vault/.obsidian/core-plugins.json
 demo_vault/.obsidian/core-plugins-migration.json
 demo_vault/.obsidian/hotkeys.json
 demo_vault/.obsidian/workspace.json
-
 

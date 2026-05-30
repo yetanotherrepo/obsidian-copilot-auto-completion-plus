@@ -192,7 +192,7 @@ class OpenAIApiClient implements ApiClient, ProviderAdapter {
         const removedParameters = new Set<string>();
         let retryCount = 0;
 
-        while (true) {
+        for (;;) {
             const data = await makeProviderRequest(
                 "openai",
                 this.url,
@@ -220,8 +220,8 @@ class OpenAIApiClient implements ApiClient, ProviderAdapter {
 
             removedParameters.add(unsupportedParameter);
             retryCount += 1;
-            const {[unsupportedParameter]: _unsupported, ...nextBody} = requestBody;
-            requestBody = nextBody;
+            requestBody = {...requestBody};
+            delete requestBody[unsupportedParameter];
         }
     }
 

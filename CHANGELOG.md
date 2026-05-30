@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.1
+- Fix CI pre-commit failures for the 1.3.x provider diagnostics release.
+
 ## 1.3.0
 - Add provider adapter types, model capability detection, and normalized provider errors.
 - Add local-only request diagnostics and safer issue reports with provider error codes.
