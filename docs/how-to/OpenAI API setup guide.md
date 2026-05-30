@@ -22,3 +22,5 @@
 8. Test the connection by clicking the `Test Connection` button to ensure the API key is correct and the plugin can connect to the OpenAI API.
 9. Exit the settings window.
 10. The plugin is now ready for use. Begin typing, and upon reaching a trigger, such as the end of a sentence, the plugin will offer suggestions. Or manually trigger the plugin by opening the command palette and typing `Copilot Auto Completion Plus: Predict`.
+
+Note: GPT-5 reasoning models do not support every classic sampling parameter. When using these models, the plugin omits unsupported OpenAI Responses API parameters such as `temperature` and `top_p`.

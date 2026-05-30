@@ -37,7 +37,7 @@ class OpenAIApiClient implements ApiClient {
             ? this.createResponsesBody(messages)
             : this.createChatCompletionsBody(messages);
 
-        const data = await makeAPIRequest(this.url, "POST", body, this.createHeaders());
+        const data = await this.makeRequestWithUnsupportedParameterRetry(body);
         return this.isResponsesUrl()
             ? data.map((data) => OpenAIApiClient.extractResponsesText(data))
             : data.map((data) => data.choices[0].message.content);
@@ -53,7 +53,7 @@ class OpenAIApiClient implements ApiClient {
         return headers;
     }
 
-    private createChatCompletionsBody(messages: ChatMessage[]): object {
+    private createChatCompletionsBody(messages: ChatMessage[]): Record<string, unknown> {
         const {max_tokens, ...modelOptions} = this.modelOptions;
         return {
             messages,
@@ -63,7 +63,7 @@ class OpenAIApiClient implements ApiClient {
         };
     }
 
-    private createResponsesBody(messages: ChatMessage[]): object {
+    private createResponsesBody(messages: ChatMessage[]): Record<string, unknown> {
         const instructions = messages
             .filter((message) => message.role === "system")
             .map((message) => message.content)
@@ -80,13 +80,40 @@ class OpenAIApiClient implements ApiClient {
             input,
             max_output_tokens: this.modelOptions.max_tokens,
             store: false,
-            temperature: this.modelOptions.temperature,
-            top_p: this.modelOptions.top_p,
         };
+        if (!this.isOpenAIReasoningModel()) {
+            body.temperature = this.modelOptions.temperature;
+            body.top_p = this.modelOptions.top_p;
+        }
         if (instructions) {
             body.instructions = instructions;
         }
         return body;
+    }
+
+    private async makeRequestWithUnsupportedParameterRetry(body: Record<string, unknown>): Promise<Result<any, Error>> {
+        let requestBody = {...body};
+        const removedParameters = new Set<string>();
+
+        while (true) {
+            const data = await makeAPIRequest(this.url, "POST", requestBody, this.createHeaders());
+            if (data.isOk()) {
+                return data;
+            }
+
+            const unsupportedParameter = OpenAIApiClient.extractUnsupportedParameter(data.error.message);
+            if (
+                unsupportedParameter === null ||
+                removedParameters.has(unsupportedParameter) ||
+                !(unsupportedParameter in requestBody)
+            ) {
+                return data;
+            }
+
+            removedParameters.add(unsupportedParameter);
+            const {[unsupportedParameter]: _unsupported, ...nextBody} = requestBody;
+            requestBody = nextBody;
+        }
     }
 
     private isResponsesUrl(): boolean {
@@ -95,6 +122,16 @@ class OpenAIApiClient implements ApiClient {
         } catch {
             return this.url.split("?")[0].replace(/\/$/, "").endsWith("/responses");
         }
+    }
+
+    private isOpenAIReasoningModel(): boolean {
+        const model = this.model.toLowerCase();
+        return model.startsWith("gpt-5") || /^o\d/.test(model);
+    }
+
+    private static extractUnsupportedParameter(message: string): string | null {
+        const match = message.match(/Unsupported parameter:\s*'([^']+)'/i);
+        return match ? match[1] : null;
     }
 
     private static extractResponsesText(data: any): string {

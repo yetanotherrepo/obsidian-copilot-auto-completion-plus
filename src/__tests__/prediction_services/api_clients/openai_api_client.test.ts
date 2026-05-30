@@ -67,6 +67,89 @@ describe("OpenAIApiClient", () => {
         });
     });
 
+    test("omits sampling parameters for GPT-5 reasoning models in the Responses API", async () => {
+        mockedRequestUrl.mockResolvedValue({
+            status: 200,
+            json: {
+                output_text: "reasoning prediction",
+            },
+        });
+
+        const client = new OpenAIApiClient(
+            "openai-key",
+            "https://api.openai.com/v1/responses",
+            "gpt-5.5",
+            modelOptions
+        );
+
+        const result = await client.queryChatModel([
+            {role: "user", content: "Hello <mask/>"},
+        ]);
+
+        expect(result._unsafeUnwrap()).toEqual("reasoning prediction");
+        const request = mockedRequestUrl.mock.calls[0][0] as any;
+        expect(JSON.parse(request.body)).toEqual({
+            model: "gpt-5.5",
+            input: [
+                {role: "user", content: "Hello <mask/>"},
+            ],
+            max_output_tokens: 256,
+            store: false,
+        });
+    });
+
+    test("retries OpenAI requests after removing unsupported top-level parameters", async () => {
+        mockedRequestUrl
+            .mockResolvedValueOnce({
+                status: 400,
+                json: {
+                    error: {
+                        message: "Unsupported parameter: 'top_p' is not supported with this model.",
+                    },
+                },
+            })
+            .mockResolvedValueOnce({
+                status: 400,
+                json: {
+                    error: {
+                        message: "Unsupported parameter: 'temperature' is not supported with this model.",
+                    },
+                },
+            })
+            .mockResolvedValueOnce({
+                status: 200,
+                json: {
+                    output_text: "future model prediction",
+                },
+            });
+
+        const client = new OpenAIApiClient(
+            "openai-key",
+            "https://api.openai.com/v1/responses",
+            "gpt-future",
+            modelOptions
+        );
+
+        const result = await client.queryChatModel([
+            {role: "user", content: "Hello <mask/>"},
+        ]);
+
+        expect(result._unsafeUnwrap()).toEqual("future model prediction");
+        expect(mockedRequestUrl).toHaveBeenCalledTimes(3);
+
+        const firstBody = JSON.parse(mockedRequestUrl.mock.calls[0][0].body);
+        expect(firstBody.top_p).toEqual(0.8);
+        expect(firstBody.temperature).toEqual(0.4);
+
+        const secondBody = JSON.parse(mockedRequestUrl.mock.calls[1][0].body);
+        expect(secondBody.top_p).toBeUndefined();
+        expect(secondBody.temperature).toEqual(0.4);
+
+        const thirdBody = JSON.parse(mockedRequestUrl.mock.calls[2][0].body);
+        expect(thirdBody.top_p).toBeUndefined();
+        expect(thirdBody.temperature).toBeUndefined();
+    });
+
     test("keeps the Chat Completions request shape for compatible URLs", async () => {
         mockedRequestUrl.mockResolvedValue({
             status: 200,

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.5
+- Fix OpenAI GPT-5 reasoning model requests by omitting unsupported sampling parameters.
+- Retry OpenAI requests without top-level parameters that the selected model rejects.
+
 ## 1.2.4
 - Publish only the release assets supported by Community Plugins.
 
