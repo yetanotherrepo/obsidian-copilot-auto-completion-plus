@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.4
+- Fix CI lint coverage for the Quick Setup settings tests.
+
 ## 1.3.3
 - Simplify settings with an OpenAI-first Quick Setup and collapsed Advanced Settings.
 - Add curated provider model recommendations sorted by expected response speed.

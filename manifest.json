@@ -1,7 +1,7 @@
 {
 	"id": "copilot-auto-completion-plus",
 	"name": "Copilot Auto Completion Plus",
-	"version": "1.3.3",
+	"version": "1.3.4",
 	"minAppVersion": "0.15.0",
 	"description": "Adds configurable AI auto-completion using OpenAI, Anthropic, Gemini, Azure OpenAI, or Ollama.",
 	"author": "Daniil Shipilov",

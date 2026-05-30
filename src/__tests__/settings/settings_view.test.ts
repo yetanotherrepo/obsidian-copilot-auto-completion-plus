@@ -1,4 +1,4 @@
-import {describe, expect, jest, test} from "@jest/globals";
+import {beforeAll, describe, expect, jest, test} from "@jest/globals";
 import * as React from "react";
 import {TextDecoder, TextEncoder} from "util";
 
@@ -11,10 +11,18 @@ jest.mock("obsidian", () => ({
     requestUrl: jest.fn(),
 }), {virtual: true});
 
-(global as any).TextEncoder = TextEncoder;
-(global as any).TextDecoder = TextDecoder;
+const testGlobal = globalThis as typeof globalThis & {
+    TextEncoder: typeof globalThis.TextEncoder;
+    TextDecoder: typeof globalThis.TextDecoder;
+};
+testGlobal.TextEncoder = TextEncoder as unknown as typeof globalThis.TextEncoder;
+testGlobal.TextDecoder = TextDecoder as unknown as typeof globalThis.TextDecoder;
 
-const {renderToStaticMarkup} = require("react-dom/server");
+let renderToStaticMarkup: typeof import("react-dom/server").renderToStaticMarkup;
+
+beforeAll(async () => {
+    ({renderToStaticMarkup} = await import("react-dom/server"));
+});
 
 function renderSettings(settings: Settings): string {
     return renderToStaticMarkup(

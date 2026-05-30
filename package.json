@@ -1,6 +1,6 @@
 {
     "name": "obsidian-copilot-auto-completion-plus",
-    "version": "1.3.3",
+    "version": "1.3.4",
     "description": "Adds a highly configurable copilot-like auto-completion using OpenAI, Anthropic, Gemini, Azure OpenAI, or Ollama.",
     "main": "main.js",
     "scripts": {
