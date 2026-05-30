@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.6
+- Add GitHub issue reporting from settings, connection checks, and prediction errors.
+- Include safe diagnostics in prefilled issue reports without API keys or note contents.
+
 ## 1.2.5
 - Fix OpenAI GPT-5 reasoning model requests by omitting unsupported sampling parameters.
 - Retry OpenAI requests without top-level parameters that the selected model rejects.

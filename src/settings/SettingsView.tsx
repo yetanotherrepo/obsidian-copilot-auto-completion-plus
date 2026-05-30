@@ -13,6 +13,7 @@ import ConnectivityCheck from "./components/ConnectivityCheck";
 import DropDownSettingItem from "./components/DropDownSettingItem";
 import {Notice} from "obsidian";
 import ProviderModelDropDownSettingItem from "./components/ProviderModelDropDownSettingItem";
+import ReportIssueSettingItem from "./components/ReportIssueSettingItem";
 import {
     DEFAULT_SETTINGS,
     MAX_DELAY,
@@ -35,6 +36,7 @@ import {
 interface IProps {
     onSettingsChanged(settings: Settings): void;
 
+    pluginVersion: string;
     settings: Settings;
 }
 
@@ -124,7 +126,7 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                             })
                         }
                     />
-                    <ConnectivityCheck key={"azure"} settings={settings}/>
+                    <ConnectivityCheck key={"azure"} pluginVersion={props.pluginVersion} settings={settings}/>
                 </>
             );
         }
@@ -178,7 +180,7 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                         errorMessage={errors.get("openAIApiSettings.model")}
                     />
 
-                    <ConnectivityCheck key={"openai"} settings={settings}/>
+                    <ConnectivityCheck key={"openai"} pluginVersion={props.pluginVersion} settings={settings}/>
                 </>
             );
         }
@@ -232,7 +234,7 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                         errorMessage={errors.get("anthropicApiSettings.model")}
                     />
 
-                    <ConnectivityCheck key={"anthropic"} settings={settings}/>
+                    <ConnectivityCheck key={"anthropic"} pluginVersion={props.pluginVersion} settings={settings}/>
                 </>
             );
         }
@@ -286,7 +288,7 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                         errorMessage={errors.get("geminiApiSettings.model")}
                     />
 
-                    <ConnectivityCheck key={"gemini"} settings={settings}/>
+                    <ConnectivityCheck key={"gemini"} pluginVersion={props.pluginVersion} settings={settings}/>
                 </>
             );
         }
@@ -326,7 +328,7 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                         errorMessage={errors.get("ollamaApiSettings.model")}
                     />
 
-                    <ConnectivityCheck key={"ollama"} settings={settings}/>
+                    <ConnectivityCheck key={"ollama"} pluginVersion={props.pluginVersion} settings={settings}/>
                 </>
             );
         }
@@ -652,6 +654,9 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                     }
                 />
             </SettingsItem>
+
+            <h2>Support</h2>
+            <ReportIssueSettingItem pluginVersion={props.pluginVersion} settings={settings}/>
 
             <h2>Danger zone</h2>
             <SettingsItem

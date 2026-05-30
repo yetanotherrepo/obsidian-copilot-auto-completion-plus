@@ -66,6 +66,7 @@ export class SettingTab extends PluginSettingTab {
                     onSettingsChanged={async (settings) => {
                         this.updatedSettings = settings;
                     }}
+                    pluginVersion={this.plugin.manifest.version}
                     settings={this.settings}
                 />
             </React.StrictMode>

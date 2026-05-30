@@ -8,8 +8,10 @@ import {Settings} from "../versions";
 import OllamaApiClient from "../../prediction_services/api_clients/OllamaApiClient";
 import AnthropicApiClient from "../../prediction_services/api_clients/AnthropicApiClient";
 import GeminiApiClient from "../../prediction_services/api_clients/GeminiApiClient";
+import {openGitHubIssue} from "../../support/github_issues";
 
 interface IProps {
+    pluginVersion: string;
     settings: Settings;
 }
 
@@ -70,6 +72,10 @@ export default function ConnectivityCheck(props: IProps): React.JSX.Element {
             );
             setStatus(Status.Success);
         } catch (e) {
+            setErrors([e instanceof Error ? e.message : String(e)]);
+            new Notice(
+                `Cannot connect to the ${props.settings.apiProvider} API. Please check your settings.`
+            );
             setStatus(Status.Failure);
             return
         }
@@ -142,6 +148,19 @@ export default function ConnectivityCheck(props: IProps): React.JSX.Element {
             >
                 Test Connection
             </button>
+            {status === Status.Failure && (
+                <button
+                    aria-label="Report connection issue on GitHub"
+                    onClick={() => openGitHubIssue({
+                        source: "connectivity-check",
+                        pluginVersion: props.pluginVersion,
+                        settings: props.settings,
+                        error: errors.join("\n"),
+                    })}
+                >
+                    Report issue
+                </button>
+            )}
         </SettingsItem>
     );
 }

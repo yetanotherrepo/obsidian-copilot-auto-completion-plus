@@ -32,6 +32,7 @@ class EventListener implements EventHandler, SettingsObserver {
     private state: EventHandler = new InitState();
     private statusBar: StatusBar;
     private app: App;
+    public readonly pluginVersion: string;
     context: Context = Context.Text;
     predictionService: PredictionService;
     settings: Settings;
@@ -41,7 +42,8 @@ class EventListener implements EventHandler, SettingsObserver {
     public static fromSettings(
         settings: Settings,
         statusBar: StatusBar,
-        app: App
+        app: App,
+        pluginVersion: string
     ): EventListener {
         const predictionService = createPredictionService(settings);
 
@@ -49,7 +51,8 @@ class EventListener implements EventHandler, SettingsObserver {
             settings,
             statusBar,
             app,
-            predictionService
+            predictionService,
+            pluginVersion
         );
 
         const settingErrors = checkForErrors(settings);
@@ -68,11 +71,13 @@ class EventListener implements EventHandler, SettingsObserver {
         settings: Settings,
         statusBar: StatusBar,
         app: App,
-        predictionService: PredictionService
+        predictionService: PredictionService,
+        pluginVersion: string
     ) {
         this.settings = settings;
         this.statusBar = statusBar;
         this.app = app;
+        this.pluginVersion = pluginVersion;
         this.predictionService = predictionService;
     }
 

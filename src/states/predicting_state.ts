@@ -1,8 +1,8 @@
 import State from "./state";
 import { DocumentChanges } from "../render_plugin/document_changes_listener";
 import EventListener from "../event_listener";
-import { Notice } from "obsidian";
 import Context from "../context_detection";
+import {showIssueReportNotice} from "../support/issue_notice";
 
 class PredictingState extends State {
     private predictionPromise: Promise<void> | null = null;
@@ -67,8 +67,14 @@ class PredictingState extends State {
         }
 
         if (result.isErr()) {
-            new Notice(
-                `Copilot: Something went wrong cannot make a prediction. Full error is available in the dev console. Please check your settings. `
+            showIssueReportNotice(
+                "Copilot: Something went wrong and a prediction could not be generated. Full error is available in the dev console.",
+                {
+                    source: "prediction",
+                    pluginVersion: this.context.pluginVersion,
+                    settings: this.context.settings,
+                    error: result.error,
+                }
             );
             console.error(result.error);
             this.context.transitionToIdleState();
