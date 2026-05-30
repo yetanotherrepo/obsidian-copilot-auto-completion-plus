@@ -109,7 +109,8 @@ Explore the following pages:
 
 The plugin is designed to be highly customizable, allowing you to tailor the following aspects:
 
-- **API Provider**: Choose your preferred API provider. Options include [OpenAI](docs/how-to/OpenAI%20API%20setup%20guide.md), [Anthropic](docs/how-to/Anthropic%20API%20setup%20guide.md), [Gemini](docs/how-to/Gemini%20API%20setup%20guide.md), [Azure OpenAI](docs/how-to/Azure%20API%20setup%20guide.md), or [Ollama](docs/how-to/Ollama%20setup%20guide.md).
+- **Quick Setup**: Enter your API key, choose a recommended model, and test the connection without touching advanced controls.
+- **API Provider**: OpenAI is the default quick setup path. Other providers are available in Advanced Settings: [Anthropic](docs/how-to/Anthropic%20API%20setup%20guide.md), [Gemini](docs/how-to/Gemini%20API%20setup%20guide.md), [Azure OpenAI](docs/how-to/Azure%20API%20setup%20guide.md), or [Ollama](docs/how-to/Ollama%20setup%20guide.md).
 - **[Triggers](docs/personalization%20and%20settings.md#triggers)**: Define the text after which the plugin should suggest a completion.
 - **[Trigger Delay](docs/personalization%20and%20settings.md#trigger-delay)**: Set the duration the plugin should wait before offering a suggestion to minimize costs.
 - **[Prefix/Suffix Size](docs/personalization%20and%20settings.md#preprocessing)**: Determine the amount of text to include in the prediction request.

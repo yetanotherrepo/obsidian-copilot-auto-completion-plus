@@ -13,6 +13,10 @@ interface IProps {
     value: string;
     password?: boolean;
     disabled?: boolean;
+    type?: React.HTMLInputTypeAttribute;
+    autoComplete?: string;
+    spellCheck?: boolean;
+    inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
 }
 
 export default function TextSettingItem(props: IProps): React.JSX.Element {
@@ -38,12 +42,21 @@ export default function TextSettingItem(props: IProps): React.JSX.Element {
             errorMessage={errorMessage}
         >
             <input
-                type={password ? "password" : "text"}
+                aria-label={name}
+                name={inputName(name)}
+                type={props.type || (password ? "password" : "text")}
                 placeholder={placeholder}
                 onChange={onChange}
                 value={value}
                 disabled={props.disabled}
+                autoComplete={props.autoComplete || "off"}
+                spellCheck={props.spellCheck ?? false}
+                inputMode={props.inputMode}
             />
         </SettingsItem>
     );
+}
+
+function inputName(name: string): string {
+    return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }

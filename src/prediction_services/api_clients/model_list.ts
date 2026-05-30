@@ -2,42 +2,122 @@ import {err, Result} from "neverthrow";
 
 import {Settings} from "../../settings/versions";
 import {makeProviderRequest} from "./utils";
-import {ModelSelection, providerErrorToError, sanitizeEndpoint} from "../provider";
+import {ModelSelection, ProviderName, providerErrorToError, sanitizeEndpoint} from "../provider";
 
 export type {ModelSelection} from "../provider";
 
 type CloudModelProvider = "openai" | "anthropic" | "gemini";
+type QuickModelProvider = Exclude<ProviderName, "azure" | "ollama">;
+
+export interface RecommendedModel extends ModelSelection {
+    provider: QuickModelProvider;
+    speedLabel: string;
+    qualityLabel: string;
+    recommended: boolean;
+    quickVisible: boolean;
+    sourceUrl: string;
+    lastVerified: string;
+}
+
+const LAST_VERIFIED = "2026-05-30";
+const OPENAI_MODELS_SOURCE = "https://developers.openai.com/api/docs/models";
+const ANTHROPIC_MODELS_SOURCE = "https://platform.claude.com/docs/en/about-claude/models/overview";
+const GEMINI_MODELS_SOURCE = "https://ai.google.dev/gemini-api/docs/models";
+
+const QUICK_MODELS: Record<QuickModelProvider, RecommendedModel[]> = {
+    openai: [
+        recommendedModel("openai", "gpt-5.4-nano", "GPT-5.4 nano", "Fastest", "Lowest latency", false, OPENAI_MODELS_SOURCE),
+        recommendedModel("openai", "gpt-5.4-mini", "GPT-5.4 mini", "Faster", "Recommended for autocomplete", true, OPENAI_MODELS_SOURCE),
+        recommendedModel("openai", "gpt-5.4", "GPT-5.4", "Fast", "Balanced", false, OPENAI_MODELS_SOURCE),
+        recommendedModel("openai", "gpt-5.5", "GPT-5.5", "Fast", "Best quality", false, OPENAI_MODELS_SOURCE),
+    ],
+    anthropic: [
+        recommendedModel("anthropic", "claude-haiku-4-5-20251001", "Claude Haiku 4.5", "Fastest", "Near-frontier", false, ANTHROPIC_MODELS_SOURCE),
+        recommendedModel("anthropic", "claude-sonnet-4-6", "Claude Sonnet 4.6", "Fast", "Recommended", true, ANTHROPIC_MODELS_SOURCE),
+        recommendedModel("anthropic", "claude-opus-4-8", "Claude Opus 4.8", "Moderate", "Best quality", false, ANTHROPIC_MODELS_SOURCE),
+    ],
+    gemini: [
+        recommendedModel("gemini", "gemini-3.1-flash-lite", "Gemini 3.1 Flash-Lite", "Fastest", "Lowest latency", false, GEMINI_MODELS_SOURCE),
+        recommendedModel("gemini", "gemini-3.5-flash", "Gemini 3.5 Flash", "Faster", "Recommended", true, GEMINI_MODELS_SOURCE),
+        recommendedModel("gemini", "gemini-3-flash-preview", "Gemini 3 Flash Preview", "Fast", "Frontier", false, GEMINI_MODELS_SOURCE),
+        recommendedModel("gemini", "gemini-3.1-pro-preview", "Gemini 3.1 Pro Preview", "Quality-first", "Best quality", false, GEMINI_MODELS_SOURCE),
+    ],
+};
 
 const FALLBACK_MODELS: Record<CloudModelProvider, ModelSelection[]> = {
     openai: [
+        {id: "gpt-5.4-nano", name: "GPT-5.4 nano"},
+        {id: "gpt-5.4-mini", name: "GPT-5.4 mini"},
+        {id: "gpt-5.4", name: "GPT-5.4"},
         {id: "gpt-5.5", name: "GPT-5.5"},
         {id: "gpt-5.5-pro", name: "GPT-5.5 pro"},
-        {id: "gpt-5.4", name: "GPT-5.4"},
-        {id: "gpt-5.4-mini", name: "GPT-5.4 mini"},
-        {id: "gpt-5.4-nano", name: "GPT-5.4 nano"},
         {id: "gpt-4.1", name: "GPT-4.1"},
         {id: "gpt-4.1-mini", name: "GPT-4.1 mini"},
         {id: "gpt-4o", name: "GPT-4o"},
         {id: "gpt-4o-mini", name: "GPT-4o mini"},
     ],
     anthropic: [
-        {id: "claude-opus-4-7", name: "Claude Opus 4.7"},
-        {id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6"},
         {id: "claude-haiku-4-5-20251001", name: "Claude Haiku 4.5"},
+        {id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6"},
+        {id: "claude-opus-4-8", name: "Claude Opus 4.8"},
+        {id: "claude-opus-4-7", name: "Claude Opus 4.7"},
     ],
     gemini: [
-        {id: "gemini-3-pro-preview", name: "Gemini 3 Pro Preview"},
+        {id: "gemini-3.1-flash-lite", name: "Gemini 3.1 Flash-Lite"},
+        {id: "gemini-3.5-flash", name: "Gemini 3.5 Flash"},
         {id: "gemini-3-flash-preview", name: "Gemini 3 Flash Preview"},
-        {id: "gemini-2.5-flash", name: "Gemini 2.5 Flash"},
+        {id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro Preview"},
         {id: "gemini-2.5-pro", name: "Gemini 2.5 Pro"},
+        {id: "gemini-2.5-flash", name: "Gemini 2.5 Flash"},
     ],
 };
+
+function recommendedModel(
+    provider: QuickModelProvider,
+    id: string,
+    name: string,
+    speedLabel: string,
+    qualityLabel: string,
+    recommended: boolean,
+    sourceUrl: string
+): RecommendedModel {
+    return {
+        provider,
+        id,
+        name,
+        speedLabel,
+        qualityLabel,
+        recommended,
+        quickVisible: true,
+        sourceUrl,
+        lastVerified: LAST_VERIFIED,
+    };
+}
 
 export function getFallbackModels(provider: Settings["apiProvider"]): ModelSelection[] {
     if (provider === "openai" || provider === "anthropic" || provider === "gemini") {
         return FALLBACK_MODELS[provider];
     }
     return [];
+}
+
+export function getQuickModels(provider: Settings["apiProvider"]): RecommendedModel[] {
+    if (provider === "openai" || provider === "anthropic" || provider === "gemini") {
+        return QUICK_MODELS[provider].filter((model) => model.quickVisible);
+    }
+    return [];
+}
+
+export function getAdvancedModelOptions(
+    provider: Settings["apiProvider"],
+    currentModel: string,
+    loadedModels: ModelSelection[]
+): ModelSelection[] {
+    const models = loadedModels.length > 0 ? loadedModels : getFallbackModels(provider);
+    if (currentModel && models.every((model) => model.id !== currentModel)) {
+        return [{id: currentModel, name: currentModel}, ...models];
+    }
+    return models;
 }
 
 export async function fetchModelsForProvider(settings: Settings): Promise<Result<ModelSelection[], Error>> {

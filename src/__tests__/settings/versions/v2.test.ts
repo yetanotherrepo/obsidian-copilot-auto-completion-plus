@@ -17,6 +17,7 @@ describe("settings v2", () => {
         expect(DEFAULT_SETTINGS.version).toEqual("2");
         expect(DEFAULT_SETTINGS.promptBundleVersion).toEqual("answer_only_v2");
         expect(DEFAULT_SETTINGS.chainOfThoughRemovalRegex).toEqual("");
+        expect(DEFAULT_SETTINGS.openAIApiSettings.model).toEqual("gpt-5.4-mini");
     });
 
     test("migrates untouched default prompt bundle to answer-only v2", () => {
@@ -26,6 +27,7 @@ describe("settings v2", () => {
         expect(migrated.version).toEqual("2");
         expect(migrated.promptBundleVersion).toEqual("answer_only_v2");
         expect(migrated.systemMessage).toEqual(DEFAULT_SETTINGS.systemMessage);
+        expect(migrated.openAIApiSettings.model).toEqual(DEFAULT_SETTINGS.openAIApiSettings.model);
         expect(migrated.chainOfThoughRemovalRegex).toEqual("");
         expect(migrated.fewShotExamples[0].answer).not.toContain("THOUGHT:");
         expect(migrated.fewShotExamples[0].answer).not.toContain("ANSWER:");
@@ -42,5 +44,14 @@ describe("settings v2", () => {
         expect(migrated.promptBundleVersion).toEqual("thought_answer_v1");
         expect(migrated.systemMessage).toEqual("Custom system message");
         expect(migrated.chainOfThoughRemovalRegex).toEqual(DEFAULT_SETTINGS_V1.chainOfThoughRemovalRegex);
+    });
+
+    test("preserves existing selected OpenAI model during migration", () => {
+        const settings = cloneDeep(DEFAULT_SETTINGS_V1);
+        settings.openAIApiSettings.model = "gpt-5.5";
+
+        const migrated = migrateFromV1ToV2(settings);
+
+        expect(migrated.openAIApiSettings.model).toEqual("gpt-5.5");
     });
 });

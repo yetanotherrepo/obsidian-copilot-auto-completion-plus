@@ -1,6 +1,7 @@
 # Personalization and settings
 The plugin has been designed to be highly customizable. 
-You can customize the following aspects of the plugin.
+The default settings view starts with Quick Setup: enable autocomplete, enter the selected provider's API key, choose a recommended model, and test the connection.
+Advanced Settings contains everything else: provider switching, custom endpoints, model parameters, triggers, privacy, diagnostics, reset, and prompt engineering.
 
 ## Triggers
 The plugin has default triggers such as:
@@ -49,8 +50,8 @@ However, if you set these values too low, the model might not have enough contex
 So you should find a balance between these two factors that work for you.
 
 ## Advanced configuration
-For advanced users, we also provide the option to customize the prompt engineering aspects of the plugin.
-These settings are hidden by default, but you can make them visible by enabling the advanced model setting.
+For advanced users, we also provide the option to customize provider details, trigger behavior, request context, privacy rules, diagnostics, and prompt engineering.
+These settings are hidden by default, but you can make them visible by enabling Advanced Settings.
 Feel free to experiment with these settings to find the best ones for you.
 If you mess up the settings, you can always reset them using the factory reset button to the default values.
 Be aware that this will reset all the settings to the default values.

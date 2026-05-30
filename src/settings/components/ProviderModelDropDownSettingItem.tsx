@@ -7,7 +7,10 @@ import SettingsItem from "./SettingsItem";
 import {Settings} from "../versions";
 import {
     fetchModelsForProvider,
+    getAdvancedModelOptions,
     getFallbackModels,
+    getQuickModels,
+    RecommendedModel,
     ModelSelection
 } from "../../prediction_services/api_clients/model_list";
 import {defaultModelCapabilities} from "../../prediction_services/provider";
@@ -17,6 +20,7 @@ interface IProps {
     value: string;
     setValue(value: string): void;
     errorMessage?: string;
+    mode?: "quick" | "advanced";
 }
 
 enum Status {
@@ -27,15 +31,16 @@ enum Status {
 }
 
 export default function ProviderModelDropDownSettingItem(props: IProps): React.JSX.Element {
-    const [models, setModels] = useState<ModelSelection[]>(getFallbackModels(props.settings.apiProvider));
+    const mode = props.mode || "advanced";
+    const [models, setModels] = useState<ModelSelection[]>(initialModels(props.settings.apiProvider, mode));
     const [status, setStatus] = useState<Status>(Status.NotStarted);
     const [loadError, setLoadError] = useState<string>("");
 
     React.useEffect(() => {
-        setModels(getFallbackModels(props.settings.apiProvider));
+        setModels(initialModels(props.settings.apiProvider, mode));
         setStatus(Status.NotStarted);
         setLoadError("");
-    }, [props.settings.apiProvider]);
+    }, [props.settings.apiProvider, mode]);
 
     const loadModels = async () => {
         if (status === Status.Loading) {
@@ -58,14 +63,24 @@ export default function ProviderModelDropDownSettingItem(props: IProps): React.J
         new Notice(`Loaded ${loadedModels.length} ${props.settings.apiProvider} models.`);
     };
 
-    const options = modelOptions(models, props.value, props.settings);
-    const buttonText = status === Status.Loading ? "Loading..." : "Refresh";
+    const currentModelIsCustom = props.value.length > 0 && models.every((model) => model.id !== props.value);
+    const options = mode === "quick"
+        ? quickModelOptions(props.settings.apiProvider, props.value)
+        : modelOptions(
+            getAdvancedModelOptions(props.settings.apiProvider, props.value, models),
+            props.value,
+            props.settings,
+            currentModelIsCustom
+        );
+    const buttonText = status === Status.Loading ? "Loading…" : "Refresh";
 
     return (
         <>
             <DropDownSettingItem
                 name={"Model"}
-                description={"Choose a model. Refresh the list after changing your API key."}
+                description={mode === "quick"
+                    ? "Recommended models are sorted from fastest to highest quality."
+                    : "Choose a model. Refresh the list after changing your API key."}
                 placeholder={"Select a model..."}
                 value={props.value}
                 setValue={props.setValue}
@@ -73,34 +88,71 @@ export default function ProviderModelDropDownSettingItem(props: IProps): React.J
                 errorMessage={props.errorMessage || loadError}
                 disabled={status === Status.Loading}
             />
-            <SettingsItem
-                name={"Refresh models"}
-                description={"Load the model list from the selected provider."}
-                errorMessage={loadError}
-            >
-                {status === Status.Loading && <span className="loader-copilot-auto-completion"/>}
-                <button
-                    aria-label="Refresh models"
-                    onClick={loadModels}
-                    disabled={status === Status.Loading}
+            {mode === "advanced" && (
+                <SettingsItem
+                    name={"Refresh models"}
+                    description={"Load the full model list from the selected provider."}
+                    errorMessage={loadError}
                 >
-                    {buttonText}
-                </button>
-            </SettingsItem>
+                    {status === Status.Loading && (
+                        <span
+                            aria-label="Loading models"
+                            role="status"
+                            className="loader-copilot-auto-completion"
+                        />
+                    )}
+                    <button
+                        aria-label="Refresh models"
+                        onClick={loadModels}
+                        disabled={status === Status.Loading}
+                    >
+                        {buttonText}
+                    </button>
+                </SettingsItem>
+            )}
         </>
     );
 }
 
-function modelOptions(models: ModelSelection[], currentModel: string, settings: Settings): { [key: string]: string } {
-    const options: { [key: string]: string } = {};
-    if (currentModel && models.every((model) => model.id !== currentModel)) {
-        options[currentModel] = `${currentModel} (Custom)`;
-    }
+function initialModels(provider: Settings["apiProvider"], mode: "quick" | "advanced"): ModelSelection[] {
+    return mode === "quick" ? getQuickModels(provider) : getFallbackModels(provider);
+}
 
+function quickModelOptions(provider: Settings["apiProvider"], currentModel: string): { [key: string]: string } {
+    const options: { [key: string]: string } = {};
+    const models = getQuickModels(provider);
+    if (currentModel && models.every((model) => model.id !== currentModel)) {
+        options[currentModel] = `${currentModel} — Custom`;
+    }
     for (const model of models) {
-        options[model.id] = labelModel(model, settings);
+        options[model.id] = labelRecommendedModel(model);
     }
     return options;
+}
+
+function modelOptions(
+    models: ModelSelection[],
+    currentModel: string,
+    settings: Settings,
+    currentModelIsCustom: boolean
+): { [key: string]: string } {
+    const options: { [key: string]: string } = {};
+    for (const model of models) {
+        options[model.id] = currentModelIsCustom && model.id === currentModel
+            ? `${model.name} — Custom`
+            : labelModel(model, settings);
+    }
+    return options;
+}
+
+function labelRecommendedModel(model: RecommendedModel): string {
+    const badges = [model.speedLabel];
+    if (model.recommended) {
+        badges.push("Recommended");
+    } else if (model.qualityLabel) {
+        badges.push(model.qualityLabel);
+    }
+    return `${model.name} — ${badges.join(" · ")}`;
 }
 
 function labelModel(model: ModelSelection, settings: Settings): string {
@@ -117,11 +169,11 @@ function labelModel(model: ModelSelection, settings: Settings): string {
     if (settings.apiProvider === "ollama") {
         badges.push("Local");
     }
-    if (getFallbackModels(settings.apiProvider)[0]?.id === model.id) {
+    if (getQuickModels(settings.apiProvider).some((quickModel) => quickModel.id === model.id && quickModel.recommended)) {
         badges.push("Recommended");
     }
 
-    return badges.length > 0 ? `${model.name} (${badges.join(", ")})` : model.name;
+    return badges.length > 0 ? `${model.name} — ${badges.join(" · ")}` : model.name;
 }
 
 function endpointFor(settings: Settings): string {

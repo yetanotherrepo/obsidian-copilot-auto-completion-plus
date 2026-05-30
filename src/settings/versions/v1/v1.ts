@@ -126,7 +126,7 @@ export const DEFAULT_SETTINGS: Settings = {
     openAIApiSettings: {
         key: "",
         url: "https://api.openai.com/v1/responses",
-        model: "gpt-5.5",
+        model: "gpt-5.4-mini",
     },
     anthropicApiSettings: {
         key: "",

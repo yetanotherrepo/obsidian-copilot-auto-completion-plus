@@ -27,7 +27,9 @@ export default function DropDownSettingItem(props: IProps): React.JSX.Element {
             errorMessage={errorMessage}
         >
             <select
+                aria-label={name}
                 className="dropdown"
+                name={name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}
                 value={props.value}
                 onChange={onChange}
                 disabled={props.disabled}

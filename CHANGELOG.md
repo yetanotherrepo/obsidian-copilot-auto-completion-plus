@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.3
+- Simplify settings with an OpenAI-first Quick Setup and collapsed Advanced Settings.
+- Add curated provider model recommendations sorted by expected response speed.
+- Update settings documentation for the new setup flow.
+
 ## 1.3.2
 - Fix the pre-commit YAML formatter environment in CI so release checks run on current Python toolchains.
 

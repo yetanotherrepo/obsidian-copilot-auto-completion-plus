@@ -41,7 +41,7 @@ export default function ConnectivityCheck(props: IProps): React.JSX.Element {
             const result = await client.checkConnection();
             if (result.isErr()) {
                 setProviderError(result.error);
-                setErrors([humanizeProviderError(result.error)]);
+                setErrors([`${humanizeProviderError(result.error)} Check your settings or report an issue.`]);
                 new Notice(
                     `Cannot connect to the ${props.settings.apiProvider} API. Please check your settings.`
                 );
@@ -55,7 +55,8 @@ export default function ConnectivityCheck(props: IProps): React.JSX.Element {
             );
             setStatus(Status.Success);
         } catch (e) {
-            setErrors([e instanceof Error ? e.message : String(e)]);
+            const message = e instanceof Error ? e.message : String(e);
+            setErrors([`${message} Check your settings or report an issue.`]);
             new Notice(
                 `Cannot connect to the ${props.settings.apiProvider} API. Please check your settings.`
             );
@@ -68,12 +69,19 @@ export default function ConnectivityCheck(props: IProps): React.JSX.Element {
 
     const ProgressFeedback = () => {
         if (status === Status.Loading) {
-            return <span className="loader-copilot-auto-completion"/>;
+            return (
+                <span
+                    aria-label="Testing connection"
+                    role="status"
+                    className="loader-copilot-auto-completion"
+                />
+            );
         }
         if (status === Status.Success) {
             return (
                 <span className={"loader-placeholder-copilot-auto-completion"}>
                     <svg
+                        aria-hidden="true"
                         xmlns="http://www.w3.org/2000/svg"
                         width="100%"
                         height="100%"
@@ -94,6 +102,7 @@ export default function ConnectivityCheck(props: IProps): React.JSX.Element {
             return (
                 <span className={"loader-placeholder-copilot-auto-completion"}>
                     <svg
+                        aria-hidden="true"
                         xmlns="http://www.w3.org/2000/svg"
                         width="24"
                         height="24"
@@ -119,11 +128,11 @@ export default function ConnectivityCheck(props: IProps): React.JSX.Element {
         <SettingsItem
             name={"Test Connection"}
             description={
-                "Want to test if you configured the API correctly? Click the button below to test the connection."
+                "Verify that the selected provider, key, and model work."
             }
             errorMessage={errors.join("\n")}
         >
-            {ProgressFeedback()}
+            <span aria-live="polite">{ProgressFeedback()}</span>
             <button
                 aria-label="Test Connection"
                 onClick={onClickConnectionButton}
