@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.2
+- Fix the pre-commit YAML formatter environment in CI so release checks run on current Python toolchains.
+
 ## 1.3.1
 - Fix CI pre-commit failures for the 1.3.x provider diagnostics release.
 

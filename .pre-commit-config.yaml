@@ -1,37 +1,35 @@
 repos:
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.0.1
-  hooks:
-  - id: check-added-large-files
-    args: [--maxkb=500]
-    exclude: ^assets/
-  - id: detect-aws-credentials
-    args: [--allow-missing-credentials]
-  - id: detect-private-key
-  - id: check-case-conflict
-  - id: check-symlinks
-  - id: check-merge-conflict
-  - id: destroyed-symlinks
-  - id: fix-byte-order-marker
-  - id: mixed-line-ending
-  - id: check-yaml
-- repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-  rev: v2.11.0
-  hooks:
-  - id: pretty-format-yaml
-    args: [--autofix]
-- repo: https://github.com/pre-commit/mirrors-eslint
-  rev: v8.45.0
-  hooks:
-  - id: eslint
-    files: \.[jt]sx?$
-    types: [file]
-- repo: local
-  hooks:
-  - id: keep-version-in-sync
-    name: keep-version-in-sync
-    language: node
-    pass_filenames: false
-    entry: npm run version
-
-
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v4.0.1
+      hooks:
+          - id: check-added-large-files
+            args: [--maxkb=500]
+            exclude: ^assets/
+          - id: detect-aws-credentials
+            args: [--allow-missing-credentials]
+          - id: detect-private-key
+          - id: check-case-conflict
+          - id: check-symlinks
+          - id: check-merge-conflict
+          - id: destroyed-symlinks
+          - id: fix-byte-order-marker
+          - id: mixed-line-ending
+          - id: check-yaml
+    - repo: https://github.com/pre-commit/mirrors-eslint
+      rev: v8.45.0
+      hooks:
+          - id: eslint
+            files: \.[jt]sx?$
+            types: [file]
+    - repo: local
+      hooks:
+          - id: prettier-yaml
+            name: prettier-yaml
+            language: system
+            entry: npx prettier --write --ignore-unknown
+            types: [yaml]
+          - id: keep-version-in-sync
+            name: keep-version-in-sync
+            language: node
+            pass_filenames: false
+            entry: npm run version

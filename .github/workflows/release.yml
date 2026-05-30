@@ -1,73 +1,73 @@
 name: Release plugin
 
 on:
-  push:
-    tags:
-    - '*'
+    push:
+        tags:
+            - "*"
 
 permissions:
-  contents: write
-  id-token: write
-  attestations: write
+    contents: write
+    id-token: write
+    attestations: write
 
 env:
-  PLUGIN_NAME: copilot-auto-completion-plus
+    PLUGIN_NAME: copilot-auto-completion-plus
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+    build:
+        runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v6
-    - name: Use Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: 24.x
-        cache: npm
+        steps:
+            - uses: actions/checkout@v6
+            - name: Use Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: 24.x
+                  cache: npm
 
-    - name: Build
-      id: build
-      run: |
-        npm ci
-        npm run build
+            - name: Build
+              id: build
+              run: |
+                  npm ci
+                  npm run build
 
-    - name: Test
-      id: test
-      run: |
-        npm run tests
+            - name: Test
+              id: test
+              run: |
+                  npm run tests
 
-    - name: Docs and release checks
-      run: npm run docs:check
+            - name: Docs and release checks
+              run: npm run docs:check
 
-    - name: Attest release assets
-      uses: actions/attest-build-provenance@v3
-      with:
-        subject-path: |
-          main.js
-          manifest.json
-          styles.css
+            - name: Attest release assets
+              uses: actions/attest-build-provenance@v3
+              with:
+                  subject-path: |
+                      main.js
+                      manifest.json
+                      styles.css
 
-    - name: Get release notes
-      id: release_notes
-      run: |
-        CHANGELOG=$(sed -n -e "/## ${{ github.ref_name }}/,/## /p" CHANGELOG.md | sed '/## /d')
-        if [ -z "$CHANGELOG" ]; then  
-          echo "Error: No release notes found for this version in CHANGELOG.md"  
-          exit 1  
-        fi  
-        {
-          echo 'body<<EOF'
-          echo "$CHANGELOG"
-          echo EOF
-        } >> "$GITHUB_OUTPUT"
+            - name: Get release notes
+              id: release_notes
+              run: |
+                  CHANGELOG=$(sed -n -e "/## ${{ github.ref_name }}/,/## /p" CHANGELOG.md | sed '/## /d')
+                  if [ -z "$CHANGELOG" ]; then
+                    echo "Error: No release notes found for this version in CHANGELOG.md"
+                    exit 1
+                  fi
+                  {
+                    echo 'body<<EOF'
+                    echo "$CHANGELOG"
+                    echo EOF
+                  } >> "$GITHUB_OUTPUT"
 
-    - name: Release
-      uses: softprops/action-gh-release@v3
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-        token: ${{ github.token }}
-        files: |
-          main.js
-          manifest.json
-          styles.css
-        body: ${{ steps.release_notes.outputs.body }}
+            - name: Release
+              uses: softprops/action-gh-release@v3
+              if: startsWith(github.ref, 'refs/tags/')
+              with:
+                  token: ${{ github.token }}
+                  files: |
+                      main.js
+                      manifest.json
+                      styles.css
+                  body: ${{ steps.release_notes.outputs.body }}
