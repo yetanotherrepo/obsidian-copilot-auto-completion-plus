@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.4
+- Publish only the release assets supported by Community Plugins.
+
 ## 1.2.3
 - Generate GitHub artifact attestations for release assets.
 
