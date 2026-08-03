@@ -348,7 +348,10 @@ class OpenAIApiClient implements ApiClient, ProviderAdapter {
         if (typeof value !== "string") {
             return undefined;
         }
-        const normalized = value.replace(/[\r\n\t\u0000-\u001f\u007f]+/g, " ").trim();
+        const normalized = Array.from(value, (character) => {
+            const codePoint = character.codePointAt(0) ?? 0;
+            return codePoint < 32 || codePoint === 127 ? " " : character;
+        }).join("").trim();
         return normalized.slice(0, 120) || undefined;
     }
 

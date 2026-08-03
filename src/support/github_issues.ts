@@ -186,8 +186,10 @@ function sanitizePublicErrorText(value: string): string {
         /https?:\/\/[^\s)\]}]+/gi,
         (url) => sanitizeEndpoint(url)
     );
-    const normalized = withoutSensitiveValues
-        .replace(/[\r\n\t\u0000-\u001f\u007f]+/g, " ")
+    const normalized = Array.from(withoutSensitiveValues, (character) => {
+        const codePoint = character.codePointAt(0) ?? 0;
+        return codePoint < 32 || codePoint === 127 ? " " : character;
+    }).join("")
         .replace(/\s{2,}/g, " ")
         .trim();
     return normalized.slice(0, 500) || "Provider error details are not available.";
