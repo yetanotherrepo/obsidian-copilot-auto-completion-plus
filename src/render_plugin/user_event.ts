@@ -20,7 +20,7 @@ enum UserEvent {
     REDO = "redo",
 }
 
-// eslint-disable-next-line @typescript-eslint/no-namespace
+// eslint-disable-next-line @typescript-eslint/no-namespace -- The namespace adds typed helpers to the UserEvent enum.
 namespace UserEvent {
     export function isDelete(event: UserEvent) {
         return event.contains("delete");

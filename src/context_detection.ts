@@ -22,7 +22,7 @@ enum Context {
     TaskList = "TaskList",
 }
 
-// eslint-disable-next-line @typescript-eslint/no-namespace
+// eslint-disable-next-line @typescript-eslint/no-namespace -- The namespace adds typed helpers to the Context enum.
 namespace Context {
     export function values(): Array<Context> {
         return Object.values(Context).filter(

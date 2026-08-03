@@ -2,6 +2,7 @@ import {Settings} from "../settings/versions";
 import {diagnosticsToMarkdown, getLastRequestDiagnostics} from "../prediction_services/diagnostics";
 import {ProviderError, SafeDiagnostics, extractProviderError, humanizeProviderError, sanitizeEndpoint} from "../prediction_services/provider";
 import {redact} from "../prediction_services/pre_processors/sensitive_data_redactor";
+import {Platform} from "obsidian";
 
 export const GITHUB_REPOSITORY_URL = "https://github.com/yetanotherrepo/obsidian-copilot-auto-completion-plus";
 
@@ -79,13 +80,32 @@ export function issueBody(context: IssueReportContext): string {
         `- Model: ${settings ? selectedModel(settings) : "Unknown"}`,
         `- API URL: ${settings ? selectedEndpoint(settings) : "Unknown"}`,
         `- Error: ${errorMessage(context.error)}`,
-        `- User agent: ${typeof navigator === "undefined" ? "Unknown" : navigator.userAgent}`,
+        `- Platform: ${platformLabel()}`,
         ...diagnosticsToMarkdown(diagnostics),
         "",
         "## Privacy note",
         "",
         "This report does not include your API key or note contents. Please do not paste secrets or private note text into this issue.",
     ].join("\n");
+}
+
+function platformLabel(): string {
+    if (Platform.isIosApp) {
+        return "iOS";
+    }
+    if (Platform.isAndroidApp) {
+        return "Android";
+    }
+    if (Platform.isMacOS) {
+        return "macOS";
+    }
+    if (Platform.isWin) {
+        return "Windows";
+    }
+    if (Platform.isLinux) {
+        return "Linux";
+    }
+    return Platform.isMobileApp ? "Mobile" : "Unknown";
 }
 
 function issueTitle(context: IssueReportContext): string {
