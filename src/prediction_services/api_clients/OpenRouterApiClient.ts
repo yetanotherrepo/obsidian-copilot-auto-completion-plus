@@ -28,6 +28,7 @@ import {
     openRouterModelsUrl,
     selectOpenRouterAutocompleteModels,
 } from "../../openrouter";
+import {readArray, readRecord, readString} from "../../unknown";
 
 const OPENROUTER_APP_URL = "https://github.com/yetanotherrepo/obsidian-copilot-auto-completion-plus";
 const OPENROUTER_APP_TITLE = "Copilot Auto Completion Plus";
@@ -144,15 +145,17 @@ class OpenRouterApiClient implements ApiClient, ProviderAdapter {
         };
     }
 
-    parseResponse(data: any): CompletionResult {
-        const content = data?.choices?.[0]?.message?.content;
+    parseResponse(data: unknown): CompletionResult {
+        const firstChoice = (readArray(data, "choices") ?? [])[0];
+        const message = firstChoice === undefined ? undefined : readRecord(firstChoice, "message");
+        const content = message?.content;
         if (typeof content === "string") {
             return {text: content};
         }
         if (Array.isArray(content)) {
             return {
                 text: content
-                    .map((part: any) => typeof part?.text === "string" ? part.text : "")
+                    .map((part) => readString(part, "text") ?? "")
                     .join(""),
             };
         }
@@ -211,7 +214,7 @@ class OpenRouterApiClient implements ApiClient, ProviderAdapter {
     private async makeRequestWithUnsupportedParameterRetry(
         body: Record<string, unknown>,
         diagnostics: SafeDiagnostics
-    ): Promise<{result: Result<any, ProviderError>; retryCount: number}> {
+    ): Promise<{result: Result<unknown, ProviderError>; retryCount: number}> {
         let requestBody = {...body};
         const removedParameters = new Set<string>();
         let retryCount = 0;

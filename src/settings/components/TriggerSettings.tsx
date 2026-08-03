@@ -14,16 +14,16 @@ interface IProps {
 }
 
 function TriggerSettings(props: IProps): React.JSX.Element {
-    const { name, triggers, description, setValues, errorMessage } = props;
+    const { name, triggers, description, errorMessage } = props;
     const onClickAddButton = () => {
-        setValues([{value: "TODO...", type: "string"}, ...triggers]);
+        props.setValues([{value: "TODO...", type: "string"}, ...triggers]);
     };
     const onClickRemoveButton = (index: number) => {
         return () => {
             const newTriggers = triggers
                 .slice(0, index)
                 .concat(triggers.slice(index + 1));
-            setValues(newTriggers);
+            props.setValues(newTriggers);
         };
     };
     const onChangeType = (index: number) => {
@@ -31,8 +31,9 @@ function TriggerSettings(props: IProps): React.JSX.Element {
             if (e.target.value === "regex" || e.target.value === "string") {
                 const value = triggers[index].value;
                 const newTriggers = [...triggers];
-                newTriggers[index] = {type: e.target.value as Trigger["type"], value};
-                setValues(newTriggers);
+                const type: Trigger["type"] = e.target.value;
+                newTriggers[index] = {type, value};
+                props.setValues(newTriggers);
             }
         };
     }
@@ -42,7 +43,7 @@ function TriggerSettings(props: IProps): React.JSX.Element {
             const type = triggers[index].type;
             const newTriggers = [...triggers];
             newTriggers[index] = {type, value: decodeHiddenCharacters(e.target.value)};
-            setValues(newTriggers);
+            props.setValues(newTriggers);
         };
     };
 

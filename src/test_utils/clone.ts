@@ -1,3 +1,5 @@
+import {cloneJson} from "../json";
+
 export function cloneDeep<T>(value: T): T {
-    return JSON.parse(JSON.stringify(value));
+    return cloneJson(value);
 }

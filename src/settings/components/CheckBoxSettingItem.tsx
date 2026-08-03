@@ -10,7 +10,7 @@ interface IProps {
 }
 
 export default function CheckBoxSettingItem(props: IProps): React.JSX.Element {
-    const { enabled, setEnabled, name, description } = props;
+    const { enabled, name, description } = props;
 
     const checkContainerClasses = ["checkbox-container"];
     if (enabled) {
@@ -18,7 +18,7 @@ export default function CheckBoxSettingItem(props: IProps): React.JSX.Element {
     }
 
     const onClick = () => {
-        setEnabled(!enabled);
+        props.setEnabled(!enabled);
     };
 
     return (

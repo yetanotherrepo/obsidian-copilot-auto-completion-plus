@@ -205,7 +205,7 @@ ANSWER: here, you write the text that should be at the location of <mask/>
         math_block_inline,
         math_block_multi_line,
         header_example_relu,
-    ].sort((a, b) => a.toString().localeCompare(b.toString())),
+    ].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
     userMessageTemplate: "{{prefix}}<mask/>{{suffix}}",
     chainOfThoughRemovalRegex: `(.|\\n)*ANSWER:`,
     // Preprocessing settings
@@ -230,7 +230,7 @@ function isRegexValid(value: string): boolean {
         const regex = new RegExp(value);
         regex.test("");
         return true;
-    } catch (e) {
+    } catch {
         return false;
     }
 }
@@ -239,7 +239,7 @@ function isValidIgnorePattern(value: string): boolean {
     try {
         mm.isMatch("", value);
         return true;
-    } catch (e) {
+    } catch {
         return false;
     }
 }

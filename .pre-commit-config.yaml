@@ -1,6 +1,6 @@
 repos:
     - repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v4.0.1
+      rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # v6.0.0
       hooks:
           - id: check-added-large-files
             args: [--maxkb=500]
@@ -15,14 +15,13 @@ repos:
           - id: fix-byte-order-marker
           - id: mixed-line-ending
           - id: check-yaml
-    - repo: https://github.com/pre-commit/mirrors-eslint
-      rev: v8.45.0
-      hooks:
-          - id: eslint
-            files: \.[jt]sx?$
-            types: [file]
     - repo: local
       hooks:
+          - id: source-lint
+            name: source-lint
+            language: system
+            pass_filenames: false
+            entry: npm run lint
           - id: prettier-yaml
             name: prettier-yaml
             language: system

@@ -1,7 +1,7 @@
 import * as mm from "micromatch";
 
 export function sleep(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 export function enumKeys<O extends object, K extends keyof O = keyof O>(
@@ -66,7 +66,6 @@ export function extractNextWordAndRemaining(suggestion: string): [string | undef
 
     return [nextWord ? leadingWhitespaces + nextWord : undefined, remaining];
 }
-
 
 
 

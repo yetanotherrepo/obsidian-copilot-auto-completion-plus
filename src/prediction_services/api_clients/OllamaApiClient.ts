@@ -19,6 +19,7 @@ import {
     sanitizeEndpoint,
 } from "../provider";
 import {recordRequestDiagnostics} from "../diagnostics";
+import {readRecord, readString} from "../../unknown";
 
 
 class OllamaApiClient implements ApiClient, ProviderAdapter {
@@ -125,9 +126,14 @@ class OllamaApiClient implements ApiClient, ProviderAdapter {
         };
     }
 
-    parseResponse(data: any): CompletionResult {
+    parseResponse(data: unknown): CompletionResult {
+        const message = readRecord(data, "message");
+        const text = readString(message, "content");
+        if (text === undefined) {
+            throw new Error("The Ollama response does not contain message content.");
+        }
         return {
-            text: data.message.content,
+            text,
         };
     }
 

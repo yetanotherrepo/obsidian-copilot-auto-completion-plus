@@ -19,6 +19,7 @@ import {
     sanitizeEndpoint,
 } from "../provider";
 import {recordRequestDiagnostics} from "../diagnostics";
+import {readArray, readString} from "../../unknown";
 
 class AnthropicApiClient implements ApiClient, ProviderAdapter {
     private readonly apiKey: string;
@@ -121,7 +122,7 @@ class AnthropicApiClient implements ApiClient, ProviderAdapter {
                 content: message.content,
             }));
 
-        const body: any = {
+        const body: Record<string, unknown> = {
             model: this.model,
             max_tokens: this.modelOptions.max_tokens,
             messages: chatMessages,
@@ -138,12 +139,13 @@ class AnthropicApiClient implements ApiClient, ProviderAdapter {
         };
     }
 
-    parseResponse(data: any): CompletionResult {
+    parseResponse(data: unknown): CompletionResult {
+        const content = readArray(data, "content") ?? [];
         return {
-            text: (data.content || [])
-            .filter((block: any) => block.type === "text")
-            .map((block: any) => block.text)
-            .join(""),
+            text: content
+                .filter((block) => readString(block, "type") === "text")
+                .map((block) => readString(block, "text") ?? "")
+                .join(""),
         };
     }
 
@@ -236,12 +238,18 @@ class AnthropicApiClient implements ApiClient, ProviderAdapter {
                 capabilities: this.capabilitiesFor(this.model),
             }
         );
-        return response.map((data: any) => {
-            const models = Array.isArray(data.data) ? data.data : [];
-            return models.map((model: any) => ({
-                id: model.id,
-                name: model.display_name || model.id,
-            }));
+        return response.map((data) => {
+            const models = readArray(data, "data") ?? [];
+            return models.flatMap((model) => {
+                const id = readString(model, "id");
+                if (id === undefined) {
+                    return [];
+                }
+                return [{
+                    id,
+                    name: readString(model, "display_name") ?? id,
+                }];
+            });
         });
     }
 }

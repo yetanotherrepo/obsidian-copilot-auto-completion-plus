@@ -136,7 +136,7 @@ class ChatGPTWithReasoning implements PredictionService {
         }
 
         const examples = this.fewShotExamples.filter(
-            (example) => example.context === context
+            (example) => String(example.context) === String(context)
         );
         const fewShotExamplesChatMessages =
             fewShotExamplesToChatMessages(examples);

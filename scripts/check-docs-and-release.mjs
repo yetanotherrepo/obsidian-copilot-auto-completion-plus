@@ -20,6 +20,7 @@ for (const check of forbiddenDocsText) {
 }
 
 checkReleaseWorkflowAssets();
+checkContinuousIntegrationWorkflow();
 checkWorkflowActionPins();
 checkVersionConsistency();
 checkIssueForms();
@@ -28,6 +29,13 @@ checkLocalMarkdownLinks();
 if (failures.length > 0) {
     console.error(failures.join("\n"));
     process.exit(1);
+}
+
+function checkContinuousIntegrationWorkflow() {
+    const workflow = read(".github/workflows/cicd.yml");
+    if (!workflow.includes("npm run lint")) {
+        failures.push("CI workflow must run the source lint checks.");
+    }
 }
 
 console.log("Docs and release hygiene checks passed.");
@@ -47,6 +55,9 @@ function checkReleaseWorkflowAssets() {
     }
     if (!workflow.includes("npm audit --audit-level=high")) {
         failures.push("Release workflow must run the high-severity dependency audit.");
+    }
+    if (!workflow.includes("npm run lint")) {
+        failures.push("Release workflow must run the source lint checks.");
     }
     if (!workflow.includes("git merge-base --is-ancestor")) {
         failures.push("Release workflow must verify that the tag commit belongs to master.");

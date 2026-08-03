@@ -20,6 +20,7 @@ import {
     sanitizeEndpoint,
 } from "../provider";
 import {recordRequestDiagnostics} from "../diagnostics";
+import {readArray, readRecord, readString} from "../../unknown";
 
 
 class AzureOAIClient implements ApiClient, ProviderAdapter {
@@ -118,9 +119,15 @@ class AzureOAIClient implements ApiClient, ProviderAdapter {
         };
     }
 
-    parseResponse(data: any): CompletionResult {
+    parseResponse(data: unknown): CompletionResult {
+        const firstChoice = (readArray(data, "choices") ?? [])[0];
+        const message = firstChoice === undefined ? undefined : readRecord(firstChoice, "message");
+        const text = readString(message, "content");
+        if (text === undefined) {
+            throw new Error("The Azure OpenAI response does not contain message content.");
+        }
         return {
-            text: data.choices[0].message.content,
+            text,
         };
     }
 

@@ -32,6 +32,9 @@ jobs:
                   npm ci
                   npm run build
 
+            - name: Lint
+              run: npm run lint
+
             - name: Pre-commit checks
               run: |
                   python -m pip install "pre-commit==$PRE_COMMIT_VERSION"

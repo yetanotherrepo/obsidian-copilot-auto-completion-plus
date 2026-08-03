@@ -24,8 +24,17 @@ Want to try out in your own vault? You can do so by following these steps:
 You can now make changes to the plugin and test them locally.
 If your changes could benefit others, feel free to submit a pull request.
 
+Before you open a pull request, run these checks:
+
+```bash
+npm run lint
+npm run build
+npm run tests -- --runInBand
+npm run docs:check
+```
+
 ## Making a Release
 
 Use the release procedure in [docs/publishing.md](docs/publishing.md). The release tag must use `x.y.z`. Do not add a `v` prefix.
 
-The release workflow accepts only commits that belong to `master`. It runs the build, tests, documentation checks, and dependency audit. It then creates attestations and publishes the supported plugin files.
+The release workflow accepts only commits that belong to `master`. It runs the lint, build, tests, documentation checks, and dependency audit. It then creates attestations and publishes the supported plugin files.

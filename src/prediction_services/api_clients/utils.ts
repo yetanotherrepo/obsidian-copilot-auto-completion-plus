@@ -16,7 +16,7 @@ export async function makeProviderRequest(
     body: object | undefined = undefined,
     headers: Record<string, string> | undefined = undefined,
     diagnostics: SafeDiagnostics
-): Promise<Result<any, ProviderError>> {
+): Promise<Result<unknown, ProviderError>> {
     try {
         if (headers === undefined) {
             headers = {
@@ -34,10 +34,12 @@ export async function makeProviderRequest(
         });
 
         if (response.status >= 400) {
-            return err(providerErrorFromHttpResponse(provider, response.status, response.json, diagnostics));
+            const responseJson: unknown = response.json;
+            return err(providerErrorFromHttpResponse(provider, response.status, responseJson, diagnostics));
         }
 
-        return ok(response.json);
+        const responseJson: unknown = response.json;
+        return ok(responseJson);
 
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -57,7 +59,7 @@ export async function makeAPIRequest(
     method: string,
     body: object | undefined = undefined,
     headers: Record<string, string> | undefined = undefined
-): Promise<Result<any, Error>> {
+): Promise<Result<unknown, Error>> {
     const result = await makeProviderRequest(
         "openai",
         url,

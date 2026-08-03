@@ -1,4 +1,4 @@
-import {Plugin, PluginSettingTab} from "obsidian";
+import {Plugin, PluginSettingTab, Setting} from "obsidian";
 import {createRoot, Root} from "react-dom/client";
 import SettingsView from "./SettingsView";
 import * as React from "react";
@@ -11,6 +11,10 @@ export interface SettingsObserver {
 }
 
 type SaveSettings = (settings: Settings) => Promise<void>;
+type SettingDefinition = {
+    name: string;
+    render(setting: Setting): void;
+};
 
 
 export class SettingTab extends PluginSettingTab {
@@ -48,7 +52,7 @@ export class SettingTab extends PluginSettingTab {
 
     public setEnable(enabled: boolean): void {
         this.settings = {...this.settings, enabled: enabled};
-        this.saveSettings(this.settings).then(() => this.updateObservers());
+        void this.saveSettings(this.settings).then(() => this.updateObservers());
     }
 
     private updateObservers(): void {
@@ -57,13 +61,28 @@ export class SettingTab extends PluginSettingTab {
         }
     }
 
-    display(): void {
-        this.root = createRoot(this.containerEl);
+    getSettingDefinitions(): SettingDefinition[] {
+        return [{
+            name: "Copilot Auto Completion Plus",
+            render: (setting) => {
+                setting.settingEl.empty();
+                this.renderSettings(setting.settingEl);
+            },
+        }];
+    }
 
+    display(): void {
+        this.renderSettings(this.containerEl);
+    }
+
+    private renderSettings(container: HTMLElement): void {
+        this.root?.unmount();
+        container.empty();
+        this.root = createRoot(container);
         this.root.render(
             <React.StrictMode>
                 <SettingsView
-                    onSettingsChanged={async (settings) => {
+                    onSettingsChanged={(settings) => {
                         this.updatedSettings = settings;
                     }}
                     pluginVersion={this.plugin.manifest.version}
@@ -71,7 +90,6 @@ export class SettingTab extends PluginSettingTab {
                 />
             </React.StrictMode>
         );
-
     }
 
 
@@ -84,7 +102,7 @@ export class SettingTab extends PluginSettingTab {
             if (errors.size > 0) {
                 this.updateObservers();
             } else {
-                this.saveSettings(this.settings).then(() => this.updateObservers());
+                void this.saveSettings(this.settings).then(() => this.updateObservers());
             }
         }
         if (this.root) {

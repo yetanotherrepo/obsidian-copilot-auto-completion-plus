@@ -6,6 +6,7 @@
 2. Run the local validation checks:
 
 ```bash
+npm run lint
 npm run build
 npm run tests -- --runInBand
 npm run docs:check
@@ -16,7 +17,7 @@ npm audit --audit-level=high
 4. Merge the release commit into `master`.
 5. Wait for the `master` CI workflow to pass.
 6. Create and push a matching `x.y.z` git tag. Do not add a `v` prefix.
-7. The release workflow checks the tag and its commit. It then builds, tests, attests, and publishes the release.
+7. The release workflow checks the tag and its commit. It then runs the lint, build, tests, attestations, and release publishing.
 8. Check the Obsidian Community portal and the public plugin page.
 
 ## Release assets

@@ -38,7 +38,7 @@ export const updateSuggestion = (
     suggestion: string
 ) => {
     const doc = view.state.doc;
-    sleep(1).then(() => {
+    void sleep(1).then(() => {
         view.dispatch({
             effects: InlineSuggestionEffect.of({
                 suggestion: {
@@ -53,7 +53,7 @@ export const updateSuggestion = (
 
 export const cancelSuggestion = (view: EditorView) => {
     const doc = view.state.doc;
-    sleep(1).then(() => {
+    void sleep(1).then(() => {
         view.dispatch({
             effects: InlineSuggestionEffect.of({
                 suggestion: {
