@@ -86,7 +86,7 @@ export default function ProviderModelDropDownSettingItem(props: IProps): React.J
                     : "Choose a model. Refresh the list after changing your API key."}
                 placeholder={"Select a model..."}
                 value={props.value}
-                setValue={props.setValue}
+                setValue={(value) => props.setValue(value)}
                 options={options}
                 errorMessage={props.errorMessage || loadError}
                 disabled={status === Status.Loading}
@@ -106,7 +106,9 @@ export default function ProviderModelDropDownSettingItem(props: IProps): React.J
                     )}
                     <button
                         aria-label="Refresh models"
-                        onClick={loadModels}
+                        onClick={() => {
+                            void loadModels();
+                        }}
                         disabled={status === Status.Loading}
                     >
                         {buttonText}

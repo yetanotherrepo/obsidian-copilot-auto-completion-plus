@@ -8,6 +8,7 @@ import {
     openRouterModelsUrl,
     selectOpenRouterAutocompleteModels,
 } from "../../openrouter";
+import {readArray, readNumber, readString} from "../../unknown";
 
 export type {ModelSelection} from "../provider";
 
@@ -201,12 +202,15 @@ async function fetchOpenAIModels(settings: Settings): Promise<Result<ModelSelect
         model: settings.openAIApiSettings.model || "Not set",
         endpoint: sanitizeEndpoint(modelsUrl),
     })).mapErr(providerErrorToError);
-    return response.map((data: any) => {
-        const models = Array.isArray(data.data) ? data.data : [];
+    return response.map((data) => {
+        const models = (readArray(data, "data") ?? []).flatMap((model) => {
+            const id = readString(model, "id");
+            return id === undefined ? [] : [{id, created: readNumber(model, "created") ?? 0}];
+        });
         return models
-            .filter((model: any) => model && model.id && isLikelyOpenAITextModel(model.id))
-            .sort((a: any, b: any) => (b.created || 0) - (a.created || 0) || a.id.localeCompare(b.id))
-            .map((model: any) => ({id: model.id, name: model.id}));
+            .filter((model) => isLikelyOpenAITextModel(model.id))
+            .sort((a, b) => b.created - a.created || a.id.localeCompare(b.id))
+            .map((model) => ({id: model.id, name: model.id}));
     });
 }
 
@@ -221,12 +225,18 @@ async function fetchAnthropicModels(settings: Settings): Promise<Result<ModelSel
         model: settings.anthropicApiSettings.model || "Not set",
         endpoint: sanitizeEndpoint(modelsUrl),
     })).mapErr(providerErrorToError);
-    return response.map((data: any) => {
-        const models = Array.isArray(data.data) ? data.data : [];
-        return models.map((model: any) => ({
-            id: model.id,
-            name: model.display_name || model.id,
-        }));
+    return response.map((data) => {
+        const models = readArray(data, "data") ?? [];
+        return models.flatMap((model) => {
+            const id = readString(model, "id");
+            if (id === undefined) {
+                return [];
+            }
+            return [{
+                id,
+                name: readString(model, "display_name") ?? id,
+            }];
+        });
     });
 }
 
@@ -239,18 +249,18 @@ async function fetchGeminiModels(settings: Settings): Promise<Result<ModelSelect
         model: settings.geminiApiSettings.model || "Not set",
         endpoint: sanitizeEndpoint(settings.geminiApiSettings.url),
     })).mapErr(providerErrorToError);
-    return response.map((data: any) => {
-        const models = Array.isArray(data.models) ? data.models : [];
+    return response.map((data) => {
+        const models = readArray(data, "models") ?? [];
         return models
-            .filter((model: any) => {
-                const methods = model.supportedGenerationMethods || [];
-                return methods.includes("generateContent");
+            .filter((model) => {
+                const methods = readArray(model, "supportedGenerationMethods") ?? [];
+                return methods.some((method) => method === "generateContent");
             })
-            .map((model: any) => {
-                const id = (model.name || "").replace(/^models\//, "");
+            .map((model) => {
+                const id = (readString(model, "name") ?? "").replace(/^models\//, "");
                 return {
                     id,
-                    name: model.displayName || id,
+                    name: readString(model, "displayName") ?? id,
                 };
             })
             .filter((model: ModelSelection) => model.id.length > 0);

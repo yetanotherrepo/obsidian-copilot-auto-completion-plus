@@ -158,7 +158,9 @@ export default function ConnectivityCheck(props: IProps): React.JSX.Element {
             <span aria-live="polite">{ProgressFeedback()}</span>
             <button
                 aria-label="Test Connection"
-                onClick={onClickConnectionButton}
+                onClick={() => {
+                    void onClickConnectionButton();
+                }}
                 disabled={status === Status.Loading}
             >
                 Test Connection

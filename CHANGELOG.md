@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.0
+- Add the Obsidian source-review rules to the local lint and release workflows.
+- Validate provider responses before the plugin reads response data.
+- Remove unsafe types from settings validation and automatic migrations.
+- Add declarative settings support for current Obsidian versions and keep the legacy settings view for older versions.
+- Use Obsidian DOM helpers and window-scoped timers in plugin UI code.
+- Declare the CodeMirror packages that the plugin imports.
+
 ## 1.4.2
 - Filter OpenRouter models that cannot provide standard text chat completions.
 - Mark OpenRouter models as unverified until a connection test succeeds.

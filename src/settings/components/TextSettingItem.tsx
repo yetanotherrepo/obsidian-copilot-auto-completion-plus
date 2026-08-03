@@ -22,7 +22,6 @@ interface IProps {
 export default function TextSettingItem(props: IProps): React.JSX.Element {
     const {
         value,
-        setValue,
         password,
         placeholder,
         name,
@@ -32,7 +31,7 @@ export default function TextSettingItem(props: IProps): React.JSX.Element {
 
     const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newValue = e.target.value;
-        setValue(newValue);
+        props.setValue(newValue);
     };
 
     return (

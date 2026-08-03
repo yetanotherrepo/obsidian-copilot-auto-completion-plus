@@ -23,6 +23,7 @@ import {
     sanitizeEndpoint,
 } from "../provider";
 import {recordRequestDiagnostics} from "../diagnostics";
+import {readArray, readNumber, readRecord, readString} from "../../unknown";
 
 
 class OpenAIApiClient implements ApiClient, ProviderAdapter {
@@ -133,11 +134,18 @@ class OpenAIApiClient implements ApiClient, ProviderAdapter {
         };
     }
 
-    parseResponse(data: any): CompletionResult {
+    parseResponse(data: unknown): CompletionResult {
+        if (this.isResponsesUrl()) {
+            return {text: OpenAIApiClient.extractResponsesText(data)};
+        }
+        const firstChoice = (readArray(data, "choices") ?? [])[0];
+        const message = firstChoice === undefined ? undefined : readRecord(firstChoice, "message");
+        const text = readString(message, "content");
+        if (text === undefined) {
+            throw new Error("The OpenAI response does not contain message content.");
+        }
         return {
-            text: this.isResponsesUrl()
-                ? OpenAIApiClient.extractResponsesText(data)
-                : data.choices[0].message.content,
+            text,
         };
     }
 
@@ -182,7 +190,7 @@ class OpenAIApiClient implements ApiClient, ProviderAdapter {
                 content: message.content,
             }));
 
-        const body: any = {
+        const body: Record<string, unknown> = {
             model: this.model,
             input,
             store: false,
@@ -200,7 +208,7 @@ class OpenAIApiClient implements ApiClient, ProviderAdapter {
     private async makeRequestWithUnsupportedParameterRetry(
         body: Record<string, unknown>,
         diagnostics: SafeDiagnostics
-    ): Promise<{result: Result<any, ProviderError>; retryCount: number}> {
+    ): Promise<{result: Result<unknown, ProviderError>; retryCount: number}> {
         let requestBody = {...body};
         const removedParameters = new Set<string>();
         let retryCount = 0;
@@ -261,49 +269,44 @@ class OpenAIApiClient implements ApiClient, ProviderAdapter {
         };
     }
 
-    private static extractResponsesText(data: any): string {
-        if (typeof data.output_text === "string") {
-            return data.output_text;
+    private static extractResponsesText(data: unknown): string {
+        const outputText = readString(data, "output_text");
+        if (outputText !== undefined) {
+            return outputText;
         }
 
-        return (data.output || [])
-            .flatMap((item: any) => {
-                if (typeof item.content === "string") {
-                    return [item.content];
+        return (readArray(data, "output") ?? [])
+            .flatMap((item) => {
+                const directContent = readString(item, "content");
+                if (directContent !== undefined) {
+                    return [directContent];
                 }
-                if (Array.isArray(item.content)) {
-                    return item.content
-                        .map((content: any) => {
-                            if (typeof content.text === "string") {
-                                return content.text;
-                            }
-                            if (typeof content.output_text === "string") {
-                                return content.output_text;
-                            }
-                            return "";
-                        });
-                }
-                return [];
+                return (readArray(item, "content") ?? [])
+                    .map((content) => readString(content, "text")
+                        ?? readString(content, "output_text")
+                        ?? "");
             })
             .join("");
     }
 
     private static diagnosticsForResponse(
         diagnostics: SafeDiagnostics,
-        data: any
+        data: unknown
     ): SafeDiagnostics {
-        const outputTokenCount = data?.usage?.output_tokens;
-        const reasoningTokenCount = data?.usage?.output_tokens_details?.reasoning_tokens;
+        const usage = readRecord(data, "usage");
+        const outputTokenDetails = readRecord(usage, "output_tokens_details");
         return {
             ...diagnostics,
-            responseStatus: OpenAIApiClient.safeResponseMetadata(data?.status),
-            incompleteReason: OpenAIApiClient.safeResponseMetadata(data?.incomplete_details?.reason),
-            outputTokenCount: typeof outputTokenCount === "number" ? outputTokenCount : undefined,
-            reasoningTokenCount: typeof reasoningTokenCount === "number" ? reasoningTokenCount : undefined,
+            responseStatus: OpenAIApiClient.safeResponseMetadata(readString(data, "status")),
+            incompleteReason: OpenAIApiClient.safeResponseMetadata(
+                readString(readRecord(data, "incomplete_details"), "reason")
+            ),
+            outputTokenCount: readNumber(usage, "output_tokens"),
+            reasoningTokenCount: readNumber(outputTokenDetails, "reasoning_tokens"),
         };
     }
 
-    private emptyResponseError(data: any, diagnostics: SafeDiagnostics): ProviderError {
+    private emptyResponseError(data: unknown, diagnostics: SafeDiagnostics): ProviderError {
         if (OpenAIApiClient.hasResponsesRefusal(data)) {
             return createProviderError({
                 provider: "openai",
@@ -335,13 +338,12 @@ class OpenAIApiClient implements ApiClient, ProviderAdapter {
         });
     }
 
-    private static hasResponsesRefusal(data: any): boolean {
-        return Array.isArray(data?.output) && data.output.some((item: any) =>
-            Array.isArray(item?.content)
-            && item.content.some((content: any) =>
-                content?.type === "refusal" || typeof content?.refusal === "string"
-            )
-        );
+    private static hasResponsesRefusal(data: unknown): boolean {
+        return (readArray(data, "output") ?? []).some((item) =>
+            (readArray(item, "content") ?? []).some((content) =>
+                readString(content, "type") === "refusal"
+                || readString(content, "refusal") !== undefined
+            ));
     }
 
     private static safeResponseMetadata(value: unknown): string | undefined {
@@ -410,11 +412,12 @@ class OpenAIApiClient implements ApiClient, ProviderAdapter {
                 capabilities: this.capabilitiesFor(this.model),
             }
         );
-        return response.map((data: any) => {
-            const models = Array.isArray(data.data) ? data.data : [];
-            return models
-                .filter((model: any) => model && model.id)
-                .map((model: any) => ({id: model.id, name: model.id}));
+        return response.map((data) => {
+            const models = readArray(data, "data") ?? [];
+            return models.flatMap((model) => {
+                const id = readString(model, "id");
+                return id === undefined ? [] : [{id, name: id}];
+            });
         });
     }
 }

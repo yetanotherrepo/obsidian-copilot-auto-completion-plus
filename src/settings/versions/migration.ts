@@ -1,83 +1,92 @@
 import {
+    areEqual,
+    cloneJson,
+    findEqualPaths,
+    getPath,
+    hasPath,
+    setPath,
+} from "../../json";
+import {UnknownRecord} from "../../unknown";
+import {
     DEFAULT_SETTINGS as DEFAULT_SETTINGS_V0,
     Settings as SettingsV0,
     settingsSchema as settingsSchemaV0,
-    Trigger
 } from "./v0/v0";
 import {
     DEFAULT_SETTINGS as DEFAULT_SETTINGS_V1,
     Settings as SettingsV1,
-    settingsSchema as settingsSchemaV1
+    settingsSchema as settingsSchemaV1,
 } from "./v1/v1";
 import {
     DEFAULT_SETTINGS as DEFAULT_SETTINGS_V2,
     Settings as SettingsV2,
-    settingsSchema as settingsSchemaV2
+    settingsSchema as settingsSchemaV2,
 } from "./v2/v2";
 import {
     DEFAULT_SETTINGS as DEFAULT_SETTINGS_V3,
     Settings as SettingsV3,
-    settingsSchema as settingsSchemaV3
+    settingsSchema as settingsSchemaV3,
 } from "./v3/v3";
 
 export function migrateFromV0ToV1(settings: SettingsV0): SettingsV1 {
-    // eslint-disable  @typescript-eslint/no-explicit-any
-    const updatedSettings: any = cloneJson(settings);
+    const updatedSettings: UnknownRecord = {...cloneJson(settings)};
     migrateDefaultSettings(updatedSettings, DEFAULT_SETTINGS_V0, DEFAULT_SETTINGS_V1);
+    const migratedDefaults = settingsSchemaV0.parse(updatedSettings);
 
-    updatedSettings.triggers.forEach((trigger: Trigger) => {
-        // Check if the trigger type is 'regex' and if its value does not end with '$'
-        if (trigger.type === 'regex' && !trigger.value.endsWith('$')) {
-            // Append '$' to the trigger value
-            trigger.value += '$';
-        }
+    const triggers = migratedDefaults.triggers
+        .map((trigger) => ({
+            ...trigger,
+            value: trigger.type === "regex" && !trigger.value.endsWith("$")
+                ? `${trigger.value}$`
+                : trigger.value,
+        }))
+        .filter((trigger) => trigger.value.length > 0)
+        .filter((trigger) => trigger.type !== "regex" || isRegexValid(trigger.value));
+
+    const chainOfThoughRemovalRegex = isRegexValid(migratedDefaults.chainOfThoughRemovalRegex)
+        ? migratedDefaults.chainOfThoughRemovalRegex
+        : DEFAULT_SETTINGS_V1.chainOfThoughRemovalRegex;
+
+    return settingsSchemaV1.parse({
+        ...migratedDefaults,
+        version: "1",
+        triggers,
+        chainOfThoughRemovalRegex,
+        ignoredFilePatterns: DEFAULT_SETTINGS_V1.ignoredFilePatterns,
+        ignoredTags: DEFAULT_SETTINGS_V1.ignoredTags,
+        cacheSuggestions: DEFAULT_SETTINGS_V1.cacheSuggestions,
+        ollamaApiSettings: cloneJson(DEFAULT_SETTINGS_V1.ollamaApiSettings),
+        anthropicApiSettings: cloneJson(DEFAULT_SETTINGS_V1.anthropicApiSettings),
+        geminiApiSettings: cloneJson(DEFAULT_SETTINGS_V1.geminiApiSettings),
+        debugMode: DEFAULT_SETTINGS_V1.debugMode,
     });
-
-    updatedSettings.triggers = updatedSettings
-        .triggers
-        .filter((trigger: Trigger) => trigger.value.length > 0)
-        .filter((trigger: Trigger) => trigger.type !== 'regex' || isRegexValid(trigger.value));
-
-    // Add the 'version' property with the value '1'
-    updatedSettings.version = '1';
-
-    if (!isRegexValid(updatedSettings.chainOfThoughRemovalRegex)) {
-        updatedSettings.chainOfThoughRemovalRegex = DEFAULT_SETTINGS_V1.chainOfThoughRemovalRegex;
-    }
-
-    updatedSettings.ignoredFilePatterns = DEFAULT_SETTINGS_V1.ignoredFilePatterns;
-    updatedSettings.ignoredTags = DEFAULT_SETTINGS_V1.ignoredTags;
-    updatedSettings.cacheSuggestions = DEFAULT_SETTINGS_V1.cacheSuggestions;
-    updatedSettings.ollamaApiSettings = DEFAULT_SETTINGS_V1.ollamaApiSettings;
-    updatedSettings.anthropicApiSettings = DEFAULT_SETTINGS_V1.anthropicApiSettings;
-    updatedSettings.geminiApiSettings = DEFAULT_SETTINGS_V1.geminiApiSettings;
-    updatedSettings.debugMode = DEFAULT_SETTINGS_V1.debugMode;
-
-    // Parsing the updated settings to ensure they match the SettingsV1 schema
-    return settingsSchemaV1.parse(updatedSettings);
 }
 
 export function migrateFromV1ToV2(settings: SettingsV1): SettingsV2 {
-    const updatedSettings: any = cloneJson(settings);
+    const updatedSettings = cloneJson(settings);
     const promptBundleWasDefault =
         areEqual(updatedSettings.systemMessage, DEFAULT_SETTINGS_V1.systemMessage)
         && areEqual(updatedSettings.userMessageTemplate, DEFAULT_SETTINGS_V1.userMessageTemplate)
         && areEqual(updatedSettings.chainOfThoughRemovalRegex, DEFAULT_SETTINGS_V1.chainOfThoughRemovalRegex)
         && areEqual(updatedSettings.fewShotExamples, DEFAULT_SETTINGS_V1.fewShotExamples);
 
-    updatedSettings.version = "2";
-    updatedSettings.redactSensitiveData = DEFAULT_SETTINGS_V2.redactSensitiveData;
-
-    if (promptBundleWasDefault) {
-        updatedSettings.systemMessage = DEFAULT_SETTINGS_V2.systemMessage;
-        updatedSettings.fewShotExamples = DEFAULT_SETTINGS_V2.fewShotExamples;
-        updatedSettings.chainOfThoughRemovalRegex = DEFAULT_SETTINGS_V2.chainOfThoughRemovalRegex;
-        updatedSettings.promptBundleVersion = DEFAULT_SETTINGS_V2.promptBundleVersion;
-    } else {
-        updatedSettings.promptBundleVersion = "thought_answer_v1";
-    }
-
-    return settingsSchemaV2.parse(updatedSettings);
+    return settingsSchemaV2.parse({
+        ...updatedSettings,
+        version: "2",
+        redactSensitiveData: DEFAULT_SETTINGS_V2.redactSensitiveData,
+        systemMessage: promptBundleWasDefault
+            ? DEFAULT_SETTINGS_V2.systemMessage
+            : updatedSettings.systemMessage,
+        fewShotExamples: promptBundleWasDefault
+            ? cloneJson(DEFAULT_SETTINGS_V2.fewShotExamples)
+            : updatedSettings.fewShotExamples,
+        chainOfThoughRemovalRegex: promptBundleWasDefault
+            ? DEFAULT_SETTINGS_V2.chainOfThoughRemovalRegex
+            : updatedSettings.chainOfThoughRemovalRegex,
+        promptBundleVersion: promptBundleWasDefault
+            ? DEFAULT_SETTINGS_V2.promptBundleVersion
+            : "thought_answer_v1",
+    });
 }
 
 export function migrateFromV2ToV3(settings: SettingsV2): SettingsV3 {
@@ -88,98 +97,31 @@ export function migrateFromV2ToV3(settings: SettingsV2): SettingsV3 {
     });
 }
 
+export function isSettingsV0(settings: unknown): settings is SettingsV0 {
+    return settingsSchemaV0.safeParse(settings).success;
+}
 
-function migrateDefaultSettings(setting: any, previousDefault: any, currentDefault: any): any {
-    const unchangedDefaultProperties = findEqualPaths(setting, previousDefault);
-    for (const path of unchangedDefaultProperties) {
+export function isSettingsV1(settings: unknown): settings is SettingsV1 {
+    return settingsSchemaV1.safeParse(settings).success;
+}
+
+export function isSettingsV2(settings: unknown): settings is SettingsV2 {
+    return settingsSchemaV2.safeParse(settings).success;
+}
+
+export function isSettingsV3(settings: unknown): settings is SettingsV3 {
+    return settingsSchemaV3.safeParse(settings).success;
+}
+
+function migrateDefaultSettings(
+    settings: UnknownRecord,
+    previousDefault: unknown,
+    currentDefault: unknown
+): void {
+    for (const path of findEqualPaths(settings, previousDefault)) {
         if (hasPath(currentDefault, path)) {
-            const newDefaultValue = getPath(currentDefault, path);
-            setPath(setting, path, newDefaultValue);
+            setPath(settings, path, cloneJson(getPath(currentDefault, path)));
         }
-    }
-}
-
-
-export const isSettingsV0 = (settings: object): boolean => {
-    const result = settingsSchemaV0.safeParse(settings);
-    return result.success;
-}
-
-
-export const isSettingsV1 = (settings: object): boolean => {
-    const result = settingsSchemaV1.safeParse(settings);
-    return result.success;
-}
-
-export const isSettingsV2 = (settings: object): boolean => {
-    const result = settingsSchemaV2.safeParse(settings);
-    return result.success;
-}
-
-export const isSettingsV3 = (settings: object): boolean => {
-    const result = settingsSchemaV3.safeParse(settings);
-    return result.success;
-}
-
-function cloneJson<T>(value: T): T {
-    return JSON.parse(JSON.stringify(value));
-}
-
-function pathSegments(path: string): (string | number)[] {
-    return path
-        .split(".")
-        .filter(segment => segment.length > 0)
-        .map(segment => {
-            const arrayIndexMatch = segment.match(/^\[(\d+)]$/);
-            return arrayIndexMatch ? Number(arrayIndexMatch[1]) : segment;
-        });
-}
-
-function hasPath(value: any, path: string): boolean {
-    let current = value;
-    for (const segment of pathSegments(path)) {
-        if (current === null || current === undefined || !Object.prototype.hasOwnProperty.call(current, segment)) {
-            return false;
-        }
-        current = current[segment];
-    }
-    return true;
-}
-
-function getPath(value: any, path: string): any {
-    let current = value;
-    for (const segment of pathSegments(path)) {
-        if (current === null || current === undefined) {
-            return undefined;
-        }
-        current = current[segment];
-    }
-    return current;
-}
-
-function setPath(value: any, path: string, newValue: any): void {
-    const segments = pathSegments(path);
-    let current = value;
-    segments.forEach((segment, index) => {
-        if (index === segments.length - 1) {
-            current[segment] = newValue;
-            return;
-        }
-        if (current[segment] === null || current[segment] === undefined) {
-            current[segment] = typeof segments[index + 1] === "number" ? [] : {};
-        }
-        current = current[segment];
-    });
-}
-
-function areEqual(value1: any, value2: any): boolean {
-    if (value1 === value2) {
-        return true;
-    }
-    try {
-        return JSON.stringify(value1) === JSON.stringify(value2);
-    } catch {
-        return false;
     }
 }
 
@@ -188,50 +130,7 @@ function isRegexValid(value: string): boolean {
         const regex = new RegExp(value);
         regex.test("");
         return true;
-    } catch (e) {
+    } catch {
         return false;
     }
-}
-
-function findEqualPaths(obj1: any, obj2: any, basePath = ''): string[] {
-    let paths: string[] = [];
-
-    if (
-        basePath === ''
-        && (
-            !isRecordLike(obj1)
-            || !isRecordLike(obj2)
-            || Array.isArray(obj1)
-            || Array.isArray(obj2)
-            || typeof obj1 === "number"
-            || typeof obj2 === "number"
-            || typeof obj1 === "string"
-            || typeof obj2 === "string"
-        )
-    ) {
-        return [];
-    }
-
-    function iterateKeys(value: any, key: string | number): void {
-        const pathPart = typeof key === "number" ? `[${key}]` : key;
-        const path = basePath ? `${basePath}.${pathPart}` : `${pathPart}`;
-        const otherValue = obj2[key];
-        if (isRecordLike(value) && isRecordLike(otherValue)) {
-            paths = paths.concat(findEqualPaths(value, otherValue, path));
-        } else if (typeof value !== "function" && areEqual(value, otherValue)) {
-            paths.push(path);
-        }
-    }
-
-    if (Array.isArray(obj1) && Array.isArray(obj2)) {
-        obj1.forEach((value, index) => iterateKeys(value, index));
-    } else {
-        Object.entries(obj1).forEach(([key, value]) => iterateKeys(value, key));
-    }
-
-    return paths;
-}
-
-function isRecordLike(value: any): boolean {
-    return typeof value === "object" && value !== null;
 }

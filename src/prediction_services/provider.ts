@@ -1,6 +1,7 @@
 import {Result} from "neverthrow";
 
 import {ChatMessage, ModelOptions} from "./types";
+import {isRecord, readRecord, readString} from "../unknown";
 
 export type ProviderName = "openai" | "openrouter" | "anthropic" | "gemini" | "azure" | "ollama";
 
@@ -73,7 +74,7 @@ export interface ProviderError {
 
 export interface ProviderAdapter {
     buildRequest(messages: ChatMessage[]): ProviderRequest;
-    parseResponse(data: any): CompletionResult;
+    parseResponse(data: unknown): CompletionResult;
     normalizeError(error: Error | string | ProviderError, diagnostics?: SafeDiagnostics): ProviderError;
     query(messages: ChatMessage[]): Promise<Result<CompletionResult, ProviderError>>;
     checkConnection(): Promise<Result<void, ProviderError>>;
@@ -313,7 +314,7 @@ export function createProviderError(input: {
 export function providerErrorFromHttpResponse(
     provider: ProviderName,
     statusCode: number,
-    responseJson: any,
+    responseJson: unknown,
     diagnostics: SafeDiagnostics
 ): ProviderError {
     const message = extractErrorMessage(responseJson) || `API returned status code ${statusCode}`;
@@ -444,21 +445,21 @@ export function safeUnsupportedParameterName(value: string): string | null {
     return SAFE_UNSUPPORTED_PARAMETERS.has(value) ? value : null;
 }
 
-function extractErrorMessage(responseJson: any): string | null {
+function extractErrorMessage(responseJson: unknown): string | null {
     if (typeof responseJson === "string") {
         return responseJson;
     }
-    if (!responseJson || typeof responseJson !== "object") {
+    if (!isRecord(responseJson)) {
         return null;
     }
-    if (typeof responseJson.error === "string") {
-        return responseJson.error;
+    const directError = readString(responseJson, "error");
+    if (directError !== undefined) {
+        return directError;
     }
-    if (responseJson.error && typeof responseJson.error.message === "string") {
-        return responseJson.error.message;
+    const nestedError = readRecord(responseJson, "error");
+    const nestedMessage = readString(nestedError, "message");
+    if (nestedMessage !== undefined) {
+        return nestedMessage;
     }
-    if (typeof responseJson.message === "string") {
-        return responseJson.message;
-    }
-    return null;
+    return readString(responseJson, "message") ?? null;
 }

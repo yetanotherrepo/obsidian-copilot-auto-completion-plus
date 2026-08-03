@@ -26,8 +26,8 @@ enum Context {
 namespace Context {
     export function values(): Array<Context> {
         return Object.values(Context).filter(
-            (value) => typeof value === "string"
-        ) as Array<Context>;
+            (value): value is Context => typeof value === "string"
+        );
     }
 
     export function getContext(prefix: string, suffix: string): Context {
@@ -63,12 +63,7 @@ namespace Context {
     }
 
     export function get(value: string) {
-        for (const context of Context.values()) {
-            if (value === context) {
-                return context;
-            }
-        }
-        return undefined;
+        return Context.values().find((context) => String(context) === value);
     }
 }
 

@@ -19,6 +19,7 @@ import {
     sanitizeEndpoint,
 } from "../provider";
 import {recordRequestDiagnostics} from "../diagnostics";
+import {readArray, readRecord, readString} from "../../unknown";
 
 class GeminiApiClient implements ApiClient, ProviderAdapter {
     private readonly apiKey: string;
@@ -138,7 +139,7 @@ class GeminiApiClient implements ApiClient, ProviderAdapter {
             }));
 
         const capabilities = this.capabilitiesFor(this.model);
-        const body: any = {
+        const body: Record<string, unknown> = {
             contents,
             generationConfig: {
                 temperature: this.modelOptions.temperature,
@@ -168,12 +169,14 @@ class GeminiApiClient implements ApiClient, ProviderAdapter {
         };
     }
 
-    parseResponse(data: any): CompletionResult {
+    parseResponse(data: unknown): CompletionResult {
+        const candidate = (readArray(data, "candidates") ?? [])[0];
+        const content = candidate === undefined ? undefined : readRecord(candidate, "content");
+        const parts = readArray(content, "parts") ?? [];
         return {
-            text: (((data.candidates || [])[0] || {}).content?.parts || [])
-            .filter((part: any) => part.text)
-            .map((part: any) => part.text)
-            .join(""),
+            text: parts
+                .map((part) => readString(part, "text") ?? "")
+                .join(""),
         };
     }
 
@@ -285,15 +288,16 @@ class GeminiApiClient implements ApiClient, ProviderAdapter {
                 capabilities: this.capabilitiesFor(this.model),
             }
         );
-        return response.map((data: any) => {
-            const models = Array.isArray(data.models) ? data.models : [];
+        return response.map((data) => {
+            const models = readArray(data, "models") ?? [];
             return models
-                .filter((model: any) => (model.supportedGenerationMethods || []).includes("generateContent"))
-                .map((model: any) => {
-                    const id = (model.name || "").replace(/^models\//, "");
+                .filter((model) => (readArray(model, "supportedGenerationMethods") ?? [])
+                    .some((method) => method === "generateContent"))
+                .map((model) => {
+                    const id = (readString(model, "name") ?? "").replace(/^models\//, "");
                     return {
                         id,
-                        name: model.displayName || id,
+                        name: readString(model, "displayName") ?? id,
                     };
                 })
                 .filter((model: ModelSelection) => model.id.length > 0);

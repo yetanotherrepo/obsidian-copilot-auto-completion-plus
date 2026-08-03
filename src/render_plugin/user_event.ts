@@ -22,25 +22,42 @@ enum UserEvent {
 
 // eslint-disable-next-line @typescript-eslint/no-namespace -- The namespace adds typed helpers to the UserEvent enum.
 namespace UserEvent {
+    export function values(): UserEvent[] {
+        return [
+            UserEvent.INPUT,
+            UserEvent.INPUT_TYPE,
+            UserEvent.INPUT_TYPE_COMPOSE,
+            UserEvent.INPUT_PASTE,
+            UserEvent.INPUT_DROP,
+            UserEvent.INPUT_COMPLETE,
+            UserEvent.DELETE,
+            UserEvent.DELETE_SELECTION,
+            UserEvent.DELETE_FORWARD,
+            UserEvent.DELETE_BACKWARDS,
+            UserEvent.DELETE_CUT,
+            UserEvent.MOVE,
+            UserEvent.MOVE_DROP,
+            UserEvent.CURSOR_MOVED,
+            UserEvent.CURSOR_MOVED_BY_MOUSE,
+            UserEvent.UNDO,
+            UserEvent.REDO,
+        ];
+    }
+
     export function isDelete(event: UserEvent) {
-        return event.contains("delete");
+        return String(event).contains("delete");
     }
 
     export function values_string(): Array<string> {
-        return Object.values(UserEvent).map((event) => event.toString());
+        return values().map((event) => String(event));
     }
 
-    export function fromString(event: string) {
-        const keys = Object.keys(UserEvent) as Array<keyof typeof UserEvent>;
-        for (const key of keys) {
-            if (event === UserEvent[key]) {
-                return UserEvent[key] as UserEvent;
-            }
-        }
-        return null;
+    export function fromString(event: string): UserEvent | null {
+        return values()
+            .find((value) => String(value) === event) ?? null;
     }
 
-    export function fromTransaction(transaction: Transaction) {
+    export function fromTransaction(transaction: Transaction): UserEvent | null {
         for (const inputType of UserEvent.values_string()) {
             if (transaction.isUserEvent(inputType)) {
                 const event = UserEvent.fromString(inputType);

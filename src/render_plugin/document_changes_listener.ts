@@ -71,7 +71,7 @@ export class DocumentChanges {
     getAddedText(): string {
         let addedText = "";
         this.update.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
-            addedText += inserted;
+            addedText += inserted.toString();
         });
 
         return addedText;

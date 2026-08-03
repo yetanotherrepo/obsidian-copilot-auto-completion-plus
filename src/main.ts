@@ -16,13 +16,19 @@ import {deserializeSettings, serializeSettings} from "./settings/utils";
 
 
 export default class CopilotPlugin extends Plugin {
-    async onload() {
+    onload(): void {
+        void this.initialize().catch(() => {
+            new Notice("Copilot: Could not initialize the plugin.");
+        });
+    }
+
+    private async initialize(): Promise<void> {
         const settings = await this.loadSettings();
 
-        const settingsTab = await SettingTab.addSettingsTab(
+        const settingsTab = SettingTab.addSettingsTab(
             this,
             settings,
-            this.saveSettings.bind(this)
+            (updatedSettings) => this.saveSettings(updatedSettings)
         );
         const statusBar = StatusBar.fromApp(this);
 
@@ -36,12 +42,12 @@ export default class CopilotPlugin extends Plugin {
         this.registerEditorExtension([
             InlineSuggestionState,
             CompletionKeyWatcher(
-                eventListener.handleAcceptKeyPressed.bind(eventListener),
-                eventListener.handlePartialAcceptKeyPressed.bind(eventListener),
-                eventListener.handleCancelKeyPressed.bind(eventListener),
+                () => eventListener.handleAcceptKeyPressed(),
+                () => eventListener.handlePartialAcceptKeyPressed(),
+                () => eventListener.handleCancelKeyPressed(),
             ),
             DocumentChangesListener(
-                eventListener.handleDocumentChange.bind(eventListener)
+                (documentChange) => eventListener.handleDocumentChange(documentChange)
             ),
             RenderSuggestionPlugin(),
         ]);
@@ -60,7 +66,9 @@ export default class CopilotPlugin extends Plugin {
                 // @ts-expect-error, not typed
                 const editorView = leaf.view.editor.cm as EditorView;
                 eventListener.onViewUpdate(editorView);
-                eventListener.handleFileChange(leaf.view.file);
+                if (leaf.view.file !== null) {
+                    eventListener.handleFileChange(leaf.view.file);
+                }
             }
         });
         this.app.metadataCache.on("changed", (file: TFile) => {
@@ -150,7 +158,7 @@ export default class CopilotPlugin extends Plugin {
     }
 
     private async loadSettings(): Promise<Settings> {
-        const data = await this.loadData();
+        const data: unknown = await this.loadData();
         const result = deserializeSettings(data);
         if (result.isOk()) {
             return result.value;
@@ -164,4 +172,3 @@ export default class CopilotPlugin extends Plugin {
     onunload() {
     }
 }
-
