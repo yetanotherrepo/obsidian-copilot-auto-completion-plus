@@ -1,4 +1,15 @@
-import {describe, expect, test} from "@jest/globals";
+import {describe, expect, jest, test} from "@jest/globals";
+
+jest.mock("obsidian", () => ({
+    Platform: {
+        isIosApp: false,
+        isAndroidApp: false,
+        isMacOS: true,
+        isWin: false,
+        isLinux: false,
+        isMobileApp: false,
+    },
+}), {virtual: true});
 
 import {buildGitHubIssueUrl, issueBody, shouldOfferIssueReport} from "../../support/github_issues";
 import {DEFAULT_SETTINGS, Settings} from "../../settings/versions";
@@ -35,6 +46,8 @@ describe("GitHub issue reporting", () => {
         expect(body).toContain("- Model: gpt-5.5");
         expect(body).toContain("- API URL: https://api.openai.com/v1/responses");
         expect(body).toContain("- Error: Unexpected plugin error. Review the developer console for details.");
+        expect(body).toContain("- Platform: macOS");
+        expect(body).not.toContain("- User agent:");
         expect(body).not.toContain("sensitive-value");
         expect(body).not.toContain("auth=sensitive-value");
     });

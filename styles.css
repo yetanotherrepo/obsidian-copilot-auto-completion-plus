@@ -4,6 +4,10 @@
     padding: 0.75em 0;
 }
 
+.copilot-auto-completion-plus-suggestion {
+    opacity: 0.4;
+}
+
 .setting-item-text-area-copilot-auto-completion {
     width: 100%;
     resize: vertical;

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.1
+- Fix the source-code errors reported by the Obsidian Scanner.
+- Add descriptions to required ESLint directive comments.
+- Move inline suggestion opacity to a CSS class.
+- Use the Obsidian Platform API in issue diagnostics.
+
 ## 1.4.0
 - Add OpenRouter as a separate API provider.
 - Add OpenRouter model loading, connection tests, and provider-specific error handling.
