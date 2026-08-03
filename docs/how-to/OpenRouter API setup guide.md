@@ -19,9 +19,13 @@ Some models require OpenRouter credits. Check the model price and your account b
 3. Set `API Provider` to `OpenRouter API`.
 4. Keep the default API URL: `https://openrouter.ai/api/v1/chat/completions`.
 5. Paste your OpenRouter API key.
-6. Select `Refresh` to load text-generation models.
+6. Select `Refresh` to load compatible text-generation models.
 7. Select a model.
 8. Select `Test Connection`.
+
+The plugin does not list image, audio, safety, moderation, or code-apply models. These models do not provide standard text chat completions.
+
+The plugin marks a selected OpenRouter model as `Unverified` until the connection test succeeds. The status resets after you change the provider, API key, endpoint, or model.
 
 The plugin accepts only the official OpenRouter HTTPS endpoint. This restriction helps protect your API key and note context.
 
@@ -33,3 +37,4 @@ The plugin sends note context to OpenRouter when it requests a completion. OpenR
 - If OpenRouter cannot access the model, refresh the model list and select another model.
 - If OpenRouter reports insufficient credits, add credits or select a free model.
 - If OpenRouter limits the request rate, wait and test the connection again.
+- If OpenRouter rejects the request with HTTP 400, select another model. The selected model might not support standard chat completions or the current model options.

@@ -26,6 +26,7 @@ import {
     OPENROUTER_CHAT_URL,
     isOfficialOpenRouterChatUrl,
     openRouterModelsUrl,
+    selectOpenRouterAutocompleteModels,
 } from "../../openrouter";
 
 const OPENROUTER_APP_URL = "https://github.com/yetanotherrepo/obsidian-copilot-auto-completion-plus";
@@ -204,16 +205,7 @@ class OpenRouterApiClient implements ApiClient, ProviderAdapter {
                 endpoint: sanitizeEndpoint(modelsUrl),
             }
         );
-        return response.map((data: any) => {
-            const models = Array.isArray(data?.data) ? data.data : [];
-            return models
-                .filter((model: any) => model && typeof model.id === "string" && this.supportsTextOutput(model))
-                .map((model: any) => ({
-                    id: model.id,
-                    name: typeof model.name === "string" && model.name.length > 0 ? model.name : model.id,
-                }))
-                .sort((left: ModelSelection, right: ModelSelection) => left.name.localeCompare(right.name));
-        });
+        return response.map(selectOpenRouterAutocompleteModels);
     }
 
     private async makeRequestWithUnsupportedParameterRetry(
@@ -287,11 +279,6 @@ class OpenRouterApiClient implements ApiClient, ProviderAdapter {
             message: errors.join("\n"),
             safeDiagnostics: this.safeDiagnostics([]),
         });
-    }
-
-    private supportsTextOutput(model: any): boolean {
-        const outputModalities = model?.architecture?.output_modalities || model?.output_modalities;
-        return !Array.isArray(outputModalities) || outputModalities.includes("text");
     }
 
     private safeDiagnostics(messages: ChatMessage[]): SafeDiagnostics {

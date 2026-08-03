@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.2
+- Filter OpenRouter models that cannot provide standard text chat completions.
+- Mark OpenRouter models as unverified until a connection test succeeds.
+- Ignore connection-test results after the connection settings change.
+- Identify HTTP 400 responses as incompatible model or request errors.
+- Keep provider error text out of public issue reports.
+
 ## 1.4.1
 - Fix the source-code errors reported by the Obsidian Scanner.
 - Add descriptions to required ESLint directive comments.

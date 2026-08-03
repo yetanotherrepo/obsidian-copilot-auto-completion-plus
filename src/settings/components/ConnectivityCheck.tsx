@@ -10,6 +10,8 @@ import {createProviderAdapter} from "../../prediction_services/api_clients/facto
 interface IProps {
     pluginVersion: string;
     settings: Settings;
+    connectionRevision: number;
+    onVerificationChange?(verified: boolean): void;
 }
 
 enum Status {
@@ -23,6 +25,16 @@ export default function ConnectivityCheck(props: IProps): React.JSX.Element {
     const [status, setStatus] = useState<Status>(Status.NotStarted);
     const [errors, setErrors] = useState<string[]>([]);
     const [providerError, setProviderError] = useState<ProviderError | null>(null);
+    const latestRevision = React.useRef(props.connectionRevision);
+    const mounted = React.useRef(true);
+    latestRevision.current = props.connectionRevision;
+
+    React.useEffect(() => {
+        mounted.current = true;
+        return () => {
+            mounted.current = false;
+        };
+    }, []);
 
     React.useEffect(() => {
         setStatus(Status.NotStarted);
@@ -36,9 +48,15 @@ export default function ConnectivityCheck(props: IProps): React.JSX.Element {
 
         setStatus(Status.Loading);
         setProviderError(null);
+        props.onVerificationChange?.(false);
+        const requestRevision = props.connectionRevision;
+        const isCurrentRequest = () => mounted.current && latestRevision.current === requestRevision;
         try {
             const client = createProviderAdapter(props.settings);
             const result = await client.checkConnection();
+            if (!isCurrentRequest()) {
+                return;
+            }
             if (result.isErr()) {
                 setProviderError(result.error);
                 setErrors([humanizeProviderError(result.error)]);
@@ -50,11 +68,16 @@ export default function ConnectivityCheck(props: IProps): React.JSX.Element {
             }
 
             setErrors([]);
+            props.onVerificationChange?.(true);
             new Notice(
                 `Successfully connected to the ${props.settings.apiProvider} API.`
             );
             setStatus(Status.Success);
         } catch (e) {
+            if (!isCurrentRequest()) {
+                return;
+            }
+            props.onVerificationChange?.(false);
             const message = e instanceof Error ? e.message : String(e);
             setErrors([`${message} Check your settings or report an issue.`]);
             new Notice(

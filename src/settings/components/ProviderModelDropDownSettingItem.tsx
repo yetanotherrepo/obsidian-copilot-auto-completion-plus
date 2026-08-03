@@ -14,6 +14,7 @@ import {
     ModelSelection
 } from "../../prediction_services/api_clients/model_list";
 import {defaultModelCapabilities} from "../../prediction_services/provider";
+import {isUnsupportedOpenRouterModelId} from "../../openrouter";
 
 interface IProps {
     settings: Settings;
@@ -21,6 +22,7 @@ interface IProps {
     setValue(value: string): void;
     errorMessage?: string;
     mode?: "quick" | "advanced";
+    verifiedModel?: string;
 }
 
 enum Status {
@@ -65,12 +67,13 @@ export default function ProviderModelDropDownSettingItem(props: IProps): React.J
 
     const currentModelIsCustom = props.value.length > 0 && models.every((model) => model.id !== props.value);
     const options = mode === "quick"
-        ? quickModelOptions(props.settings.apiProvider, props.value)
+        ? quickModelOptions(props.settings.apiProvider, props.value, props.verifiedModel)
         : modelOptions(
             getAdvancedModelOptions(props.settings.apiProvider, props.value, models),
             props.value,
             props.settings,
-            currentModelIsCustom
+            currentModelIsCustom,
+            props.verifiedModel
         );
     const buttonText = status === Status.Loading ? "Loading…" : "Refresh";
 
@@ -118,11 +121,21 @@ function initialModels(provider: Settings["apiProvider"], mode: "quick" | "advan
     return mode === "quick" ? getQuickModels(provider) : getFallbackModels(provider);
 }
 
-function quickModelOptions(provider: Settings["apiProvider"], currentModel: string): { [key: string]: string } {
+function quickModelOptions(
+    provider: Settings["apiProvider"],
+    currentModel: string,
+    verifiedModel?: string
+): { [key: string]: string } {
     const options: { [key: string]: string } = {};
     const models = getQuickModels(provider);
     if (currentModel && models.every((model) => model.id !== currentModel)) {
-        options[currentModel] = `${currentModel} — Custom`;
+        if (provider === "openrouter" && isUnsupportedOpenRouterModelId(currentModel)) {
+            options[currentModel] = `${currentModel} — Unsupported · Choose another model`;
+        } else if (provider === "openrouter") {
+            options[currentModel] = `${currentModel} — ${verificationLabel(currentModel, verifiedModel)}`;
+        } else {
+            options[currentModel] = `${currentModel} — Custom`;
+        }
     }
     for (const model of models) {
         options[model.id] = labelRecommendedModel(model);
@@ -134,13 +147,21 @@ function modelOptions(
     models: ModelSelection[],
     currentModel: string,
     settings: Settings,
-    currentModelIsCustom: boolean
+    currentModelIsCustom: boolean,
+    verifiedModel?: string
 ): { [key: string]: string } {
     const options: { [key: string]: string } = {};
     for (const model of models) {
-        options[model.id] = currentModelIsCustom && model.id === currentModel
-            ? `${model.name} — Custom`
-            : labelModel(model, settings);
+        if (settings.apiProvider === "openrouter" && isUnsupportedOpenRouterModelId(model.id)) {
+            options[model.id] = `${model.name} — Unsupported · Choose another model`;
+        } else if (currentModelIsCustom && model.id === currentModel) {
+            const customBadges = settings.apiProvider === "openrouter"
+                ? `Custom · ${verificationLabel(model.id, verifiedModel)}`
+                : "Custom";
+            options[model.id] = `${model.name} — ${customBadges}`;
+        } else {
+            options[model.id] = labelModel(model, settings, verifiedModel);
+        }
     }
     return options;
 }
@@ -155,7 +176,7 @@ function labelRecommendedModel(model: RecommendedModel): string {
     return `${model.name} — ${badges.join(" · ")}`;
 }
 
-function labelModel(model: ModelSelection, settings: Settings): string {
+function labelModel(model: ModelSelection, settings: Settings, verifiedModel?: string): string {
     const badges: string[] = [];
     const capabilities = defaultModelCapabilities(
         settings.apiProvider,
@@ -169,11 +190,18 @@ function labelModel(model: ModelSelection, settings: Settings): string {
     if (settings.apiProvider === "ollama") {
         badges.push("Local");
     }
+    if (settings.apiProvider === "openrouter") {
+        badges.push(verificationLabel(model.id, verifiedModel));
+    }
     if (getQuickModels(settings.apiProvider).some((quickModel) => quickModel.id === model.id && quickModel.recommended)) {
         badges.push("Recommended");
     }
 
     return badges.length > 0 ? `${model.name} — ${badges.join(" · ")}` : model.name;
+}
+
+function verificationLabel(modelId: string, verifiedModel?: string): string {
+    return modelId === verifiedModel ? "Verified" : "Unverified · Run Test Connection";
 }
 
 function endpointFor(settings: Settings): string {

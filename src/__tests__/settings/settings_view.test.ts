@@ -89,6 +89,18 @@ describe("SettingsView quick setup", () => {
 
         expect(html).toContain("OpenRouter API Key");
         expect(html).toContain("anthropic/claude-test");
+        expect(html).toContain("Unverified");
         expect(html).toContain("Test Connection");
+    });
+
+    test("marks unsupported OpenRouter models in the model selector", () => {
+        const settings = cloneDeep(DEFAULT_SETTINGS);
+        settings.apiProvider = "openrouter";
+        settings.openRouterApiSettings.model = "morph/morph-v3-fast";
+
+        const html = renderSettings(settings);
+
+        expect(html).toContain("Unsupported");
+        expect(html).toContain("Choose another model");
     });
 });
