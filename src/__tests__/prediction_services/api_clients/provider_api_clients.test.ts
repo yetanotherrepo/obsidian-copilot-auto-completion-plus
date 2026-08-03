@@ -104,6 +104,50 @@ describe("provider API clients", () => {
         });
     });
 
+    test("Gemini retries without penalty parameters when the model rejects them", async () => {
+        mockedRequestUrl
+            .mockResolvedValueOnce({
+                status: 400,
+                json: {
+                    error: {
+                        message: "Penalty is not enabled for this model",
+                    },
+                },
+            })
+            .mockResolvedValueOnce({
+                status: 200,
+                json: {
+                    candidates: [
+                        {content: {parts: [{text: "gemini prediction"}]}},
+                    ],
+                },
+            });
+
+        const client = new GeminiApiClient(
+            "gemini-key",
+            "https://generativelanguage.googleapis.com/v1beta",
+            "gemini-3.5-flash",
+            modelOptions
+        );
+
+        const result = await client.queryChatModel([
+            {role: "user", content: "Hello <mask/>"},
+        ]);
+
+        expect(result._unsafeUnwrap()).toEqual("gemini prediction");
+        expect(mockedRequestUrl).toHaveBeenCalledTimes(2);
+
+        const firstBody = JSON.parse(mockedRequestUrl.mock.calls[0][0].body);
+        expect(firstBody.generationConfig.frequencyPenalty).toEqual(0.25);
+        expect(firstBody.generationConfig.presencePenalty).toEqual(0.1);
+
+        const secondBody = JSON.parse(mockedRequestUrl.mock.calls[1][0].body);
+        expect(secondBody.generationConfig.frequencyPenalty).toBeUndefined();
+        expect(secondBody.generationConfig.presencePenalty).toBeUndefined();
+        expect(client.capabilitiesFor("gemini-3.5-flash").supportsFrequencyPenalty).toEqual(false);
+        expect(client.capabilitiesFor("gemini-3.5-flash").supportsPresencePenalty).toEqual(false);
+    });
+
     test("Azure builds an OpenAI-compatible chat request and parses choices", async () => {
         mockedRequestUrl.mockResolvedValue({
             status: 200,

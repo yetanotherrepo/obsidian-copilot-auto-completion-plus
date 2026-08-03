@@ -1,6 +1,7 @@
 import {Settings} from "../settings/versions";
 import {diagnosticsToMarkdown, getLastRequestDiagnostics} from "../prediction_services/diagnostics";
 import {ProviderError, SafeDiagnostics, extractProviderError, humanizeProviderError, sanitizeEndpoint} from "../prediction_services/provider";
+import {redact} from "../prediction_services/pre_processors/sensitive_data_redactor";
 
 export const GITHUB_REPOSITORY_URL = "https://github.com/yetanotherrepo/obsidian-copilot-auto-completion-plus";
 
@@ -23,6 +24,37 @@ export function buildGitHubIssueUrl(context: IssueReportContext): string {
 
 export function openGitHubIssue(context: IssueReportContext): void {
     window.open(buildGitHubIssueUrl(context), "_blank", "noopener,noreferrer");
+}
+
+export function shouldOfferIssueReport(
+    error: Error | string | ProviderError | undefined
+): boolean {
+    const providerError = error instanceof Error
+        ? extractProviderError(error)
+        : isProviderError(error)
+            ? error
+            : null;
+    const rawMessage = providerError?.message
+        || (error instanceof Error
+            ? error.message
+            : typeof error === "string"
+                ? error
+                : "");
+    if (isConnectionFailure(rawMessage) || isRawConfigurationFailure(rawMessage)) {
+        return false;
+    }
+    if (!providerError) {
+        return true;
+    }
+    return ![
+        "invalid_key",
+        "model_unavailable",
+        "rate_limited",
+        "quota_exceeded",
+        "request_too_large",
+        "timeout",
+        "not_configured",
+    ].includes(providerError.code);
 }
 
 export function issueBody(context: IssueReportContext): string {
@@ -114,13 +146,15 @@ function errorMessage(error: Error | string | ProviderError | undefined): string
         return "Not provided";
     }
     if (isProviderError(error)) {
-        return humanizeProviderError(error);
+        return safeProviderErrorMessage(error);
     }
     if (error instanceof Error) {
         const providerError = extractProviderError(error);
-        return providerError ? humanizeProviderError(providerError) : error.message;
+        return providerError
+            ? safeProviderErrorMessage(providerError)
+            : "Unexpected plugin error. Review the developer console for details.";
     }
-    return error;
+    return "Unexpected plugin error. Review the developer console for details.";
 }
 
 function providerDiagnostics(error: Error | string | ProviderError | undefined): SafeDiagnostics | null {
@@ -138,4 +172,33 @@ function providerDiagnostics(error: Error | string | ProviderError | undefined):
 
 function isProviderError(error: unknown): error is ProviderError {
     return Boolean(error && typeof error === "object" && "safeDiagnostics" in error && "provider" in error);
+}
+
+function safeProviderErrorMessage(error: ProviderError): string {
+    if (error.code === "unknown") {
+        return "The provider returned an unexpected error. Review the developer console for details.";
+    }
+    return sanitizePublicErrorText(humanizeProviderError(error));
+}
+
+function sanitizePublicErrorText(value: string): string {
+    const withoutSensitiveValues = redact(value).replace(
+        /https?:\/\/[^\s)\]}]+/gi,
+        (url) => sanitizeEndpoint(url)
+    );
+    const normalized = Array.from(withoutSensitiveValues, (character) => {
+        const codePoint = character.codePointAt(0) ?? 0;
+        return codePoint < 32 || codePoint === 127 ? " " : character;
+    }).join("")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+    return normalized.slice(0, 500) || "Provider error details are not available.";
+}
+
+function isConnectionFailure(message: string): boolean {
+    return /err_connection_refused|econnrefused|connection refused|failed to fetch|network error/i.test(message);
+}
+
+function isRawConfigurationFailure(message: string): boolean {
+    return /\b(?:401|403)\b|unauthori[sz]ed|invalid(?: api)? key|api key (?:is )?not set|missing api key|rate limit|quota|billing/i.test(message);
 }

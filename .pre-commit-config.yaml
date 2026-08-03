@@ -30,6 +30,6 @@ repos:
             types: [yaml]
           - id: keep-version-in-sync
             name: keep-version-in-sync
-            language: node
+            language: system
             pass_filenames: false
             entry: npm run version

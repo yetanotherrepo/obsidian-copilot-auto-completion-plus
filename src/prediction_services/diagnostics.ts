@@ -1,4 +1,4 @@
-import {SafeDiagnostics} from "./provider";
+import {SafeDiagnostics, safeUnsupportedParameterName} from "./provider";
 
 export interface RequestDiagnostics extends SafeDiagnostics {
     timestamp: string;
@@ -42,13 +42,36 @@ export function diagnosticsToMarkdown(diagnostics: RequestDiagnostics | SafeDiag
         `- Endpoint: ${diagnostics.endpoint}`,
         `- Request characters: ${diagnostics.requestCharCount ?? "Unknown"}`,
         `- Response characters: ${diagnostics.responseCharCount ?? "Unknown"}`,
+        `- Response status: ${safeEnumDiagnostic(diagnostics.responseStatus, RESPONSE_STATUSES, "Unknown")}`,
+        `- Incomplete reason: ${safeEnumDiagnostic(diagnostics.incompleteReason, INCOMPLETE_REASONS, "None")}`,
+        `- Output tokens: ${diagnostics.outputTokenCount ?? "Unknown"}`,
+        `- Reasoning tokens: ${diagnostics.reasoningTokenCount ?? "Unknown"}`,
         `- Latency: ${diagnostics.latencyMs ?? "Unknown"} ms`,
         `- Retry count: ${diagnostics.retryCount ?? 0}`,
         `- Error code: ${diagnostics.errorCode ?? "None"}`,
         `- Status code: ${diagnostics.statusCode ?? "None"}`,
         `- Retryable: ${diagnostics.retryable ?? false}`,
-        `- Unsupported parameter: ${diagnostics.unsupportedParameter ?? "None"}`,
+        `- Unsupported parameter: ${safeParameterName(diagnostics.unsupportedParameter)}`,
         `- Prompt bundle: ${diagnostics.promptBundleVersion ?? "Unknown"}`,
         `- Capabilities: ${capabilitySummary}`,
     ];
+}
+
+const RESPONSE_STATUSES = new Set(["queued", "in_progress", "completed", "incomplete", "failed", "cancelled"]);
+const INCOMPLETE_REASONS = new Set(["max_output_tokens", "max_tokens", "content_filter"]);
+
+function safeEnumDiagnostic(
+    value: string | undefined,
+    allowedValues: Set<string>,
+    fallback: string
+): string {
+    if (!value) {
+        return fallback;
+    }
+    const normalized = value.toLowerCase();
+    return allowedValues.has(normalized) ? normalized : "Other";
+}
+
+function safeParameterName(value: string | undefined): string {
+    return value ? safeUnsupportedParameterName(value) || "None" : "None";
 }

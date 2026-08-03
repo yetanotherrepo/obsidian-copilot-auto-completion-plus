@@ -13,6 +13,9 @@ export type ProviderErrorCode =
     | "request_too_large"
     | "timeout"
     | "parse_error"
+    | "incomplete_response"
+    | "empty_response"
+    | "model_refusal"
     | "not_configured"
     | "unknown";
 
@@ -49,6 +52,10 @@ export interface SafeDiagnostics {
     unsupportedParameter?: string;
     requestCharCount?: number;
     responseCharCount?: number;
+    responseStatus?: string;
+    incompleteReason?: string;
+    outputTokenCount?: number;
+    reasoningTokenCount?: number;
     promptBundleVersion?: string;
     capabilities?: ModelCapabilities;
 }
@@ -352,6 +359,15 @@ export function humanizeProviderError(error: ProviderError): string {
     if (error.code === "parse_error") {
         return `${provider} returned a response the plugin could not parse.`;
     }
+    if (error.code === "incomplete_response") {
+        return error.message;
+    }
+    if (error.code === "empty_response") {
+        return `${provider} returned no completion text.`;
+    }
+    if (error.code === "model_refusal") {
+        return `${provider} refused to generate completion text.`;
+    }
     if (error.code === "not_configured") {
         return error.message;
     }
@@ -372,10 +388,29 @@ export function providerDisplayName(provider: ProviderName): string {
 export function extractUnsupportedParameter(message: string): string | null {
     const singleQuoteMatch = message.match(/Unsupported parameter:\s*'([^']+)'/i);
     if (singleQuoteMatch) {
-        return singleQuoteMatch[1];
+        return safeUnsupportedParameterName(singleQuoteMatch[1]);
     }
     const doubleQuoteMatch = message.match(/Unsupported parameter:\s*"([^"]+)"/i);
-    return doubleQuoteMatch ? doubleQuoteMatch[1] : null;
+    return doubleQuoteMatch ? safeUnsupportedParameterName(doubleQuoteMatch[1]) : null;
+}
+
+const SAFE_UNSUPPORTED_PARAMETERS = new Set([
+    "temperature",
+    "top_p",
+    "topP",
+    "frequency_penalty",
+    "frequencyPenalty",
+    "presence_penalty",
+    "presencePenalty",
+    "max_tokens",
+    "max_output_tokens",
+    "max_completion_tokens",
+    "maxOutputTokens",
+    "store",
+]);
+
+export function safeUnsupportedParameterName(value: string): string | null {
+    return SAFE_UNSUPPORTED_PARAMETERS.has(value) ? value : null;
 }
 
 function extractErrorMessage(responseJson: any): string | null {

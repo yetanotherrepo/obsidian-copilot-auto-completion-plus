@@ -89,6 +89,10 @@ class OpenAIApiClient implements ApiClient, ProviderAdapter {
             return err(error);
         }
 
+        const responseDiagnostics = this.isResponsesUrl()
+            ? OpenAIApiClient.diagnosticsForResponse(diagnostics, result.value)
+            : diagnostics;
+
         let text: string;
         try {
             text = this.parseResponse(result.value).text;
@@ -97,13 +101,22 @@ class OpenAIApiClient implements ApiClient, ProviderAdapter {
                 provider: "openai",
                 code: "parse_error",
                 message: error instanceof Error ? error.message : String(error),
-                safeDiagnostics: diagnostics,
+                safeDiagnostics: responseDiagnostics,
             });
             recordRequestDiagnostics(providerError.safeDiagnostics);
             return err(providerError);
         }
+
+        if (text.length === 0) {
+            const providerError = this.emptyResponseError(result.value, responseDiagnostics);
+            recordRequestDiagnostics({
+                ...providerError.safeDiagnostics,
+                responseCharCount: 0,
+            });
+            return err(providerError);
+        }
         recordRequestDiagnostics({
-            ...diagnostics,
+            ...responseDiagnostics,
             responseCharCount: text.length,
         });
         return ok({text});
@@ -273,6 +286,73 @@ class OpenAIApiClient implements ApiClient, ProviderAdapter {
                 return [];
             })
             .join("");
+    }
+
+    private static diagnosticsForResponse(
+        diagnostics: SafeDiagnostics,
+        data: any
+    ): SafeDiagnostics {
+        const outputTokenCount = data?.usage?.output_tokens;
+        const reasoningTokenCount = data?.usage?.output_tokens_details?.reasoning_tokens;
+        return {
+            ...diagnostics,
+            responseStatus: OpenAIApiClient.safeResponseMetadata(data?.status),
+            incompleteReason: OpenAIApiClient.safeResponseMetadata(data?.incomplete_details?.reason),
+            outputTokenCount: typeof outputTokenCount === "number" ? outputTokenCount : undefined,
+            reasoningTokenCount: typeof reasoningTokenCount === "number" ? reasoningTokenCount : undefined,
+        };
+    }
+
+    private emptyResponseError(data: any, diagnostics: SafeDiagnostics): ProviderError {
+        if (OpenAIApiClient.hasResponsesRefusal(data)) {
+            return createProviderError({
+                provider: "openai",
+                code: "model_refusal",
+                message: "OpenAI refused to generate completion text.",
+                safeDiagnostics: diagnostics,
+            });
+        }
+
+        if (diagnostics.responseStatus === "incomplete") {
+            const reachedTokenLimit = diagnostics.incompleteReason === "max_output_tokens"
+                || diagnostics.incompleteReason === "max_tokens";
+            return createProviderError({
+                provider: "openai",
+                code: "incomplete_response",
+                message: reachedTokenLimit
+                    ? "OpenAI reached the output token limit before it produced completion text. Increase Max tokens or reduce the request context."
+                    : "OpenAI returned an incomplete response without completion text. Try the request again.",
+                retryable: !reachedTokenLimit,
+                safeDiagnostics: diagnostics,
+            });
+        }
+
+        return createProviderError({
+            provider: "openai",
+            code: "empty_response",
+            message: "OpenAI returned no completion text.",
+            safeDiagnostics: diagnostics,
+        });
+    }
+
+    private static hasResponsesRefusal(data: any): boolean {
+        return Array.isArray(data?.output) && data.output.some((item: any) =>
+            Array.isArray(item?.content)
+            && item.content.some((content: any) =>
+                content?.type === "refusal" || typeof content?.refusal === "string"
+            )
+        );
+    }
+
+    private static safeResponseMetadata(value: unknown): string | undefined {
+        if (typeof value !== "string") {
+            return undefined;
+        }
+        const normalized = Array.from(value, (character) => {
+            const codePoint = character.codePointAt(0) ?? 0;
+            return codePoint < 32 || codePoint === 127 ? " " : character;
+        }).join("").trim();
+        return normalized.slice(0, 120) || undefined;
     }
 
     async checkConnection(): Promise<Result<void, ProviderError>> {

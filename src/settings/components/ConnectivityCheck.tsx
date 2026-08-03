@@ -3,7 +3,7 @@ import {useState} from "react";
 import SettingsItem from "./SettingsItem";
 import {Notice} from "obsidian";
 import {Settings} from "../versions";
-import {openGitHubIssue} from "../../support/github_issues";
+import {openGitHubIssue, shouldOfferIssueReport} from "../../support/github_issues";
 import {ProviderError, humanizeProviderError} from "../../prediction_services/provider";
 import {createProviderAdapter} from "../../prediction_services/api_clients/factory";
 
@@ -41,7 +41,7 @@ export default function ConnectivityCheck(props: IProps): React.JSX.Element {
             const result = await client.checkConnection();
             if (result.isErr()) {
                 setProviderError(result.error);
-                setErrors([`${humanizeProviderError(result.error)} Check your settings or report an issue.`]);
+                setErrors([humanizeProviderError(result.error)]);
                 new Notice(
                     `Cannot connect to the ${props.settings.apiProvider} API. Please check your settings.`
                 );
@@ -140,7 +140,9 @@ export default function ConnectivityCheck(props: IProps): React.JSX.Element {
             >
                 Test Connection
             </button>
-            {status === Status.Failure && (
+            {status === Status.Failure && shouldOfferIssueReport(
+                providerError || errors.join("\n")
+            ) && (
                 <button
                     aria-label="Report connection issue on GitHub"
                     onClick={() => openGitHubIssue({
