@@ -26,6 +26,7 @@ class GeminiApiClient implements ApiClient, ProviderAdapter {
     private readonly model: string;
     private readonly modelOptions: ModelOptions;
     private readonly promptBundleVersion: string;
+    private penaltiesSupported = true;
 
     static fromSettings(settings: Settings): GeminiApiClient {
         return new GeminiApiClient(
@@ -61,7 +62,8 @@ class GeminiApiClient implements ApiClient, ProviderAdapter {
         const request = this.buildRequest(messages);
         const diagnostics = this.safeDiagnostics(messages);
         const startedAt = Date.now();
-        const data = await makeProviderRequest(
+        let retryCount = 0;
+        let data = await makeProviderRequest(
             "gemini",
             request.url,
             request.method,
@@ -69,10 +71,26 @@ class GeminiApiClient implements ApiClient, ProviderAdapter {
             request.headers,
             diagnostics
         );
+        if (data.isErr() && GeminiApiClient.shouldRetryWithoutPenalties(data.error)) {
+            this.penaltiesSupported = false;
+            retryCount = 1;
+            const retryRequest = this.buildRequest(messages);
+            data = await makeProviderRequest(
+                "gemini",
+                retryRequest.url,
+                retryRequest.method,
+                retryRequest.body,
+                retryRequest.headers,
+                {
+                    ...this.safeDiagnostics(messages),
+                    retryCount,
+                }
+            );
+        }
         const finishedDiagnostics = {
-            ...diagnostics,
+            ...this.safeDiagnostics(messages),
             latencyMs: Date.now() - startedAt,
-            retryCount: 0,
+            retryCount,
         };
 
         if (data.isErr()) {
@@ -119,14 +137,19 @@ class GeminiApiClient implements ApiClient, ProviderAdapter {
                 parts: [{text: message.content}],
             }));
 
+        const capabilities = this.capabilitiesFor(this.model);
         const body: any = {
             contents,
             generationConfig: {
                 temperature: this.modelOptions.temperature,
                 topP: this.modelOptions.top_p,
                 maxOutputTokens: this.modelOptions.max_tokens,
-                frequencyPenalty: this.modelOptions.frequency_penalty,
-                presencePenalty: this.modelOptions.presence_penalty,
+                ...(capabilities.supportsFrequencyPenalty
+                    ? {frequencyPenalty: this.modelOptions.frequency_penalty}
+                    : {}),
+                ...(capabilities.supportsPresencePenalty
+                    ? {presencePenalty: this.modelOptions.presence_penalty}
+                    : {}),
             },
         };
         if (systemInstruction) {
@@ -162,7 +185,37 @@ class GeminiApiClient implements ApiClient, ProviderAdapter {
     }
 
     capabilitiesFor(model: string): ModelCapabilities {
-        return defaultModelCapabilities("gemini", model, this.url);
+        const capabilities = defaultModelCapabilities("gemini", model, this.url);
+        if (this.penaltiesSupported) {
+            return capabilities;
+        }
+        return {
+            ...capabilities,
+            supportsFrequencyPenalty: false,
+            supportsPresencePenalty: false,
+            notes: [
+                ...(capabilities.notes || []),
+                "The selected Gemini model rejected penalty parameters.",
+            ],
+        };
+    }
+
+    private static shouldRetryWithoutPenalties(error: ProviderError): boolean {
+        if (error.statusCode !== 400) {
+            return false;
+        }
+        const unsupportedParameter = (error.unsupportedParameter || "").toLowerCase();
+        if (unsupportedParameter.includes("frequencypenalty")
+            || unsupportedParameter.includes("presencepenalty")
+            || unsupportedParameter.includes("frequency_penalty")
+            || unsupportedParameter.includes("presence_penalty")) {
+            return true;
+        }
+
+        const message = error.message.toLowerCase();
+        return message.includes("penalty is not enabled")
+            || (/(frequency|presence)[_ ]?penalty/.test(message)
+                && /(not supported|not enabled|unknown field|invalid parameter)/.test(message));
     }
 
     private safeDiagnostics(messages: ChatMessage[]): SafeDiagnostics {

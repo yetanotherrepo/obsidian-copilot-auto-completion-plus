@@ -98,6 +98,77 @@ describe("OpenAIApiClient", () => {
         });
     });
 
+    test("reports an incomplete response when reasoning uses the output token limit", async () => {
+        mockedRequestUrl.mockResolvedValue({
+            status: 200,
+            json: {
+                status: "incomplete",
+                incomplete_details: {reason: "max_output_tokens"},
+                output: [],
+                usage: {
+                    output_tokens: 256,
+                    output_tokens_details: {reasoning_tokens: 256},
+                },
+            },
+        });
+
+        const client = new OpenAIApiClient(
+            "openai-key",
+            "https://api.openai.com/v1/responses",
+            "gpt-5.4-mini",
+            modelOptions
+        );
+
+        const result = await client.query([
+            {role: "user", content: "Hello <mask/>"},
+        ]);
+
+        expect(result.isErr()).toEqual(true);
+        if (result.isErr()) {
+            expect(result.error.code).toEqual("incomplete_response");
+            expect(result.error.safeDiagnostics.responseStatus).toEqual("incomplete");
+            expect(result.error.safeDiagnostics.incompleteReason).toEqual("max_output_tokens");
+            expect(result.error.safeDiagnostics.outputTokenCount).toEqual(256);
+            expect(result.error.safeDiagnostics.reasoningTokenCount).toEqual(256);
+            expect(result.error.message).toContain("Increase Max tokens");
+        }
+    });
+
+    test("reports a refusal without storing the refusal text", async () => {
+        mockedRequestUrl.mockResolvedValue({
+            status: 200,
+            json: {
+                status: "completed",
+                output: [
+                    {
+                        type: "message",
+                        content: [
+                            {type: "refusal", refusal: "Private provider text"},
+                        ],
+                    },
+                ],
+            },
+        });
+
+        const client = new OpenAIApiClient(
+            "openai-key",
+            "https://api.openai.com/v1/responses",
+            "gpt-5.4-mini",
+            modelOptions
+        );
+
+        const result = await client.query([
+            {role: "user", content: "Hello <mask/>"},
+        ]);
+
+        expect(result.isErr()).toEqual(true);
+        if (result.isErr()) {
+            expect(result.error.code).toEqual("model_refusal");
+            expect(result.error.message).not.toContain("Private provider text");
+            expect(JSON.stringify(result.error.safeDiagnostics)).not.toContain("Private provider text");
+        }
+    });
+
     test("retries OpenAI requests after removing unsupported top-level parameters", async () => {
         mockedRequestUrl
             .mockResolvedValueOnce({
