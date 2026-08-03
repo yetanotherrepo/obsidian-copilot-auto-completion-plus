@@ -44,6 +44,7 @@ interface IProps {
 
 const PROVIDER_LABELS: Record<Settings["apiProvider"], string> = {
     openai: "OpenAI",
+    openrouter: "OpenRouter",
     anthropic: "Anthropic",
     gemini: "Gemini",
     azure: "Azure OpenAI",
@@ -52,6 +53,7 @@ const PROVIDER_LABELS: Record<Settings["apiProvider"], string> = {
 
 const PROVIDER_OPTIONS: Record<Settings["apiProvider"], string> = {
     openai: "OpenAI API",
+    openrouter: "OpenRouter API",
     anthropic: "Anthropic API",
     gemini: "Gemini API",
     azure: "Azure OAI API",
@@ -82,6 +84,9 @@ export default function SettingsView(props: IProps): React.JSX.Element {
         const openAIApiSettings = {
             ...settings.openAIApiSettings,
         };
+        const openRouterApiSettings = {
+            ...settings.openRouterApiSettings,
+        };
         const anthropicApiSettings = {
             ...settings.anthropicApiSettings,
         };
@@ -97,6 +102,7 @@ export default function SettingsView(props: IProps): React.JSX.Element {
             apiProvider: settings.apiProvider,
             azureOAIApiSettings,
             openAIApiSettings,
+            openRouterApiSettings,
             anthropicApiSettings,
             geminiApiSettings,
             ollamaApiSettings,
@@ -109,6 +115,7 @@ export default function SettingsView(props: IProps): React.JSX.Element {
     const setProvider = (value: string) => {
         if (
             value === "openai"
+            || value === "openrouter"
             || value === "azure"
             || value === "ollama"
             || value === "anthropic"
@@ -134,9 +141,11 @@ export default function SettingsView(props: IProps): React.JSX.Element {
             : provider === "ollama"
                 ? "Ollama API URL"
                 : `${PROVIDER_LABELS[provider]} API URL`;
-        const description = mode === "quick"
-            ? "Custom endpoint for this provider."
-            : "The endpoint used for API requests.";
+        const description = provider === "openrouter"
+            ? "OpenRouter requests use this official HTTPS endpoint. Custom endpoints are not accepted."
+            : mode === "quick"
+                ? "Custom endpoint for this provider."
+                : "The endpoint used for API requests.";
 
         if (provider === "openai") {
             return (
@@ -173,6 +182,27 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                         updateSettings({
                             anthropicApiSettings: {
                                 ...settings.anthropicApiSettings,
+                                url: value,
+                            },
+                        })
+                    }
+                />
+            );
+        }
+        if (provider === "openrouter") {
+            return (
+                <TextSettingItem
+                    name={name}
+                    description={description}
+                    placeholder={"https://openrouter.ai/api/v1/chat/completions"}
+                    type="url"
+                    inputMode="url"
+                    value={settings.openRouterApiSettings.url}
+                    errorMessage={errors.get("openRouterApiSettings.url")}
+                    setValue={(value: string) =>
+                        updateSettings({
+                            openRouterApiSettings: {
+                                ...settings.openRouterApiSettings,
                                 url: value,
                             },
                         })
@@ -289,6 +319,27 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                 />
             );
         }
+        if (provider === "openrouter") {
+            return (
+                <TextSettingItem
+                    name={"OpenRouter API Key"}
+                    description={description}
+                    placeholder={"sk-or-v1-..."}
+                    password
+                    autoComplete="off"
+                    value={settings.openRouterApiSettings.key}
+                    errorMessage={errors.get("openRouterApiSettings.key")}
+                    setValue={(value: string) =>
+                        updateSettings({
+                            openRouterApiSettings: {
+                                ...settings.openRouterApiSettings,
+                                key: value,
+                            },
+                        })
+                    }
+                />
+            );
+        }
         if (provider === "gemini") {
             return (
                 <TextSettingItem
@@ -365,6 +416,24 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                         })
                     }
                     errorMessage={errors.get("anthropicApiSettings.model")}
+                />
+            );
+        }
+        if (provider === "openrouter") {
+            return (
+                <ProviderModelDropDownSettingItem
+                    mode={mode}
+                    settings={settings}
+                    value={settings.openRouterApiSettings.model}
+                    setValue={(value: string) =>
+                        updateSettings({
+                            openRouterApiSettings: {
+                                ...settings.openRouterApiSettings,
+                                model: value,
+                            },
+                        })
+                    }
+                    errorMessage={errors.get("openRouterApiSettings.model")}
                 />
             );
         }
@@ -857,6 +926,9 @@ export default function SettingsView(props: IProps): React.JSX.Element {
         if (provider === "anthropic") {
             return settings.anthropicApiSettings.url;
         }
+        if (provider === "openrouter") {
+            return settings.openRouterApiSettings.url;
+        }
         if (provider === "gemini") {
             return settings.geminiApiSettings.url;
         }
@@ -873,6 +945,9 @@ export default function SettingsView(props: IProps): React.JSX.Element {
         if (provider === "anthropic") {
             return DEFAULT_SETTINGS.anthropicApiSettings.url;
         }
+        if (provider === "openrouter") {
+            return DEFAULT_SETTINGS.openRouterApiSettings.url;
+        }
         if (provider === "gemini") {
             return DEFAULT_SETTINGS.geminiApiSettings.url;
         }
@@ -888,6 +963,9 @@ export default function SettingsView(props: IProps): React.JSX.Element {
         }
         if (provider === "anthropic") {
             return errors.get("anthropicApiSettings.url");
+        }
+        if (provider === "openrouter") {
+            return errors.get("openRouterApiSettings.url");
         }
         if (provider === "gemini") {
             return errors.get("geminiApiSettings.url");

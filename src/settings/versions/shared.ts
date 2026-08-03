@@ -1,4 +1,5 @@
 import {z} from "zod";
+import {isOfficialOpenRouterChatUrl} from "../../openrouter";
 
 export const MIN_DELAY = 0;
 export const MAX_DELAY = 2000;
@@ -24,6 +25,14 @@ export const azureOAIApiSettingsSchema = z.object({
 export const openAIApiSettingsSchema = z.object({
     key: z.string(),
     url: z.string().url(),
+    model: z.string(),
+}).strict();
+
+export const openRouterApiSettingsSchema = z.object({
+    key: z.string(),
+    url: z.string().url().refine(isOfficialOpenRouterChatUrl, {
+        message: "OpenRouter API URL must be https://openrouter.ai/api/v1/chat/completions",
+    }),
     model: z.string(),
 }).strict();
 

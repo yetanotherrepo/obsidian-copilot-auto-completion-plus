@@ -6,9 +6,7 @@ on:
             - "*"
 
 permissions:
-    contents: write
-    id-token: write
-    attestations: write
+    contents: read
 
 env:
     PLUGIN_NAME: copilot-auto-completion-plus
@@ -18,9 +16,27 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            - uses: actions/checkout@v6
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+              with:
+                  fetch-depth: 0
+            - name: Validate release tag
+              run: |
+                  VERSION=$(node -p "require('./package.json').version")
+                  if [[ ! "$GITHUB_REF_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                    echo "Error: Release tags must use x.y.z without a v prefix."
+                    exit 1
+                  fi
+                  if [ "$GITHUB_REF_NAME" != "$VERSION" ]; then
+                    echo "Error: Tag $GITHUB_REF_NAME does not match package version $VERSION."
+                    exit 1
+                  fi
+                  git fetch origin master
+                  if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+                    echo "Error: The release commit is not part of origin/master."
+                    exit 1
+                  fi
             - name: Use Node.js
-              uses: actions/setup-node@v6
+              uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
               with:
                   node-version: 24.x
                   cache: npm
@@ -39,8 +55,38 @@ jobs:
             - name: Docs and release checks
               run: npm run docs:check
 
+            - name: Dependency audit
+              run: npm audit --audit-level=high
+
+            - name: Save release assets
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+              with:
+                  name: plugin-release-assets
+                  path: |
+                      main.js
+                      manifest.json
+                      styles.css
+                  if-no-files-found: error
+                  retention-days: 1
+
+    publish:
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            id-token: write
+            attestations: write
+
+        steps:
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+            - name: Download release assets
+              uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+              with:
+                  name: plugin-release-assets
+                  path: .
+
             - name: Attest release assets
-              uses: actions/attest-build-provenance@v3
+              uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
               with:
                   subject-path: |
                       main.js
@@ -62,7 +108,7 @@ jobs:
                   } >> "$GITHUB_OUTPUT"
 
             - name: Release
-              uses: softprops/action-gh-release@v3
+              uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3
               if: startsWith(github.ref, 'refs/tags/')
               with:
                   token: ${{ github.token }}

@@ -3,6 +3,7 @@ import { DocumentChanges } from "../render_plugin/document_changes_listener";
 import EventListener from "../event_listener";
 import Context from "../context_detection";
 import {showIssueReportNotice} from "../support/issue_notice";
+import {extractProviderError} from "../prediction_services/provider";
 
 class PredictingState extends State {
     private predictionPromise: Promise<void> | null = null;
@@ -68,7 +69,7 @@ class PredictingState extends State {
 
         if (result.isErr()) {
             showIssueReportNotice(
-                "Copilot: Something went wrong and a prediction could not be generated. Full error is available in the dev console.",
+                "Copilot: The plugin could not generate a prediction. Safe diagnostics are available in the developer console.",
                 {
                     source: "prediction",
                     pluginVersion: this.context.pluginVersion,
@@ -76,7 +77,16 @@ class PredictingState extends State {
                     error: result.error,
                 }
             );
-            console.error(result.error);
+            const providerError = extractProviderError(result.error);
+            console.error("Copilot prediction failed", providerError
+                ? {
+                    provider: providerError.provider,
+                    code: providerError.code,
+                    statusCode: providerError.statusCode,
+                    retryable: providerError.retryable,
+                    safeDiagnostics: providerError.safeDiagnostics,
+                }
+                : {name: result.error.name});
             this.context.transitionToIdleState();
         }
 

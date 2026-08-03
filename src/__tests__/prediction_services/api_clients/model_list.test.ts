@@ -1,15 +1,24 @@
-import {describe, expect, jest, test} from "@jest/globals";
+import {beforeEach, describe, expect, jest, test} from "@jest/globals";
+import {requestUrl} from "obsidian";
 
 jest.mock("obsidian", () => ({
     requestUrl: jest.fn(),
 }), {virtual: true});
 
 import {
+    fetchModelsForProvider,
     getAdvancedModelOptions,
     getQuickModels,
 } from "../../../prediction_services/api_clients/model_list";
+import {DEFAULT_SETTINGS} from "../../../settings/versions";
+import {cloneDeep} from "../../../test_utils/clone";
+
+const mockedRequestUrl = requestUrl as any;
 
 describe("provider model recommendations", () => {
+    beforeEach(() => {
+        mockedRequestUrl.mockReset();
+    });
     test.each(["openai", "anthropic", "gemini"] as const)(
         "returns only 3-5 quick models for %s",
         (provider) => {
@@ -49,5 +58,51 @@ describe("provider model recommendations", () => {
 
         expect(options[0]).toEqual({id: "custom-frontier-model", name: "custom-frontier-model"});
         expect(options[1]).toEqual({id: "gpt-5.4-mini", name: "GPT-5.4 mini"});
+    });
+
+    test("loads OpenRouter text models for the settings dropdown", async () => {
+        mockedRequestUrl.mockResolvedValue({
+            status: 200,
+            json: {
+                data: [
+                    {
+                        id: "provider/text-model",
+                        name: "Text Model",
+                        architecture: {output_modalities: ["text"]},
+                    },
+                    {
+                        id: "provider/audio-model",
+                        name: "Audio Model",
+                        architecture: {output_modalities: ["audio"]},
+                    },
+                ],
+            },
+        });
+        const settings = cloneDeep(DEFAULT_SETTINGS);
+        settings.apiProvider = "openrouter";
+        settings.openRouterApiSettings.key = "openrouter-key";
+
+        const result = await fetchModelsForProvider(settings);
+
+        expect(result._unsafeUnwrap()).toEqual([
+            {id: "provider/text-model", name: "Text Model"},
+        ]);
+        const request = mockedRequestUrl.mock.calls[0][0] as any;
+        expect(request.headers.Authorization).toEqual("Bearer openrouter-key");
+        expect(request.url).toEqual(
+            "https://openrouter.ai/api/v1/models?output_modalities=text&limit=1000"
+        );
+    });
+
+    test("does not load OpenRouter models through an unsafe endpoint", async () => {
+        const settings = cloneDeep(DEFAULT_SETTINGS);
+        settings.apiProvider = "openrouter";
+        settings.openRouterApiSettings.key = "openrouter-key";
+        settings.openRouterApiSettings.url = "http://169.254.169.254/api/v1/chat/completions";
+
+        const result = await fetchModelsForProvider(settings);
+
+        expect(result.isErr()).toEqual(true);
+        expect(mockedRequestUrl).not.toHaveBeenCalled();
     });
 });

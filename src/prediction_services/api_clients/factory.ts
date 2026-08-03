@@ -5,10 +5,14 @@ import AzureOAIClient from "./AzureOAIClient";
 import GeminiApiClient from "./GeminiApiClient";
 import OllamaApiClient from "./OllamaApiClient";
 import OpenAIApiClient from "./OpenAIApiClient";
+import OpenRouterApiClient from "./OpenRouterApiClient";
 
 export function createProviderAdapter(settings: Settings): ProviderAdapter {
     if (settings.apiProvider === "openai") {
         return OpenAIApiClient.fromSettings(settings);
+    }
+    if (settings.apiProvider === "openrouter") {
+        return OpenRouterApiClient.fromSettings(settings);
     }
     if (settings.apiProvider === "azure") {
         return AzureOAIClient.fromSettings(settings);

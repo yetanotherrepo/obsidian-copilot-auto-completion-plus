@@ -2,7 +2,7 @@ import {Result} from "neverthrow";
 
 import {ChatMessage, ModelOptions} from "./types";
 
-export type ProviderName = "openai" | "anthropic" | "gemini" | "azure" | "ollama";
+export type ProviderName = "openai" | "openrouter" | "anthropic" | "gemini" | "azure" | "ollama";
 
 export type ProviderErrorCode =
     | "invalid_key"
@@ -164,6 +164,20 @@ export function defaultModelCapabilities(
         };
     }
 
+    if (provider === "openrouter") {
+        return {
+            supportsTemperature: true,
+            supportsTopP: true,
+            supportsFrequencyPenalty: true,
+            supportsPresencePenalty: true,
+            supportsMaxTokens: true,
+            isReasoningModel: false,
+            supportsModelListing: true,
+            supportsStreaming: false,
+            notes: ["OpenRouter model capabilities vary. The plugin retries without rejected parameters."],
+        };
+    }
+
     return {
         supportsTemperature: true,
         supportsTopP: true,
@@ -200,10 +214,10 @@ export function optionsForCapabilities(
 }
 
 export function isReasoningModelId(provider: ProviderName, model: string): boolean {
-    if (provider !== "openai" && provider !== "azure") {
+    if (provider !== "openai" && provider !== "azure" && provider !== "openrouter") {
         return false;
     }
-    const normalized = model.toLowerCase();
+    const normalized = model.toLowerCase().split("/").pop() || "";
     return normalized.startsWith("gpt-5") || /^o\d/.test(normalized);
 }
 
@@ -310,6 +324,8 @@ export function providerErrorFromHttpResponse(
         code = "unsupported_parameter";
     } else if (statusCode === 401 || statusCode === 403) {
         code = "invalid_key";
+    } else if (statusCode === 402) {
+        code = "quota_exceeded";
     } else if (statusCode === 404) {
         code = "model_unavailable";
     } else if (statusCode === 408 || lowerMessage.includes("timeout")) {
@@ -377,6 +393,7 @@ export function humanizeProviderError(error: ProviderError): string {
 export function providerDisplayName(provider: ProviderName): string {
     const labels: Record<ProviderName, string> = {
         openai: "OpenAI",
+        openrouter: "OpenRouter",
         anthropic: "Anthropic",
         gemini: "Gemini",
         azure: "Azure OpenAI",
@@ -391,7 +408,15 @@ export function extractUnsupportedParameter(message: string): string | null {
         return safeUnsupportedParameterName(singleQuoteMatch[1]);
     }
     const doubleQuoteMatch = message.match(/Unsupported parameter:\s*"([^"]+)"/i);
-    return doubleQuoteMatch ? safeUnsupportedParameterName(doubleQuoteMatch[1]) : null;
+    if (doubleQuoteMatch) {
+        return safeUnsupportedParameterName(doubleQuoteMatch[1]);
+    }
+    const unsupportedSuffixMatch = message.match(/["']?([A-Za-z_][A-Za-z0-9_]*)["']?\s+is not (?:a )?supported parameter/i);
+    if (unsupportedSuffixMatch) {
+        return safeUnsupportedParameterName(unsupportedSuffixMatch[1]);
+    }
+    const notSupportedMatch = message.match(/parameter\s+["']?([A-Za-z_][A-Za-z0-9_]*)["']?\s+is not supported/i);
+    return notSupportedMatch ? safeUnsupportedParameterName(notSupportedMatch[1]) : null;
 }
 
 const SAFE_UNSUPPORTED_PARAMETERS = new Set([

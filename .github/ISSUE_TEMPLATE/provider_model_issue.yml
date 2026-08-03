@@ -9,6 +9,7 @@ body:
           label: Provider
           options:
               - OpenAI
+              - OpenRouter
               - Anthropic
               - Gemini
               - Azure OpenAI

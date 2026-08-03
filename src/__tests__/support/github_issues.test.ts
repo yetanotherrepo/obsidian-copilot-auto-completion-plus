@@ -52,6 +52,22 @@ describe("GitHub issue reporting", () => {
         expect(body).not.toContain("suffix");
     });
 
+    test("includes OpenRouter diagnostics without its API key", () => {
+        const settings = cloneDeep(DEFAULT_SETTINGS);
+        settings.apiProvider = "openrouter";
+        settings.openRouterApiSettings.key = "sk-or-v1-sensitive-value";
+        settings.openRouterApiSettings.model = "anthropic/claude-test";
+        settings.openRouterApiSettings.url = "https://openrouter.ai/api/v1/chat/completions?key=secret";
+
+        const body = issueBody({source: "prediction", settings});
+
+        expect(body).toContain("- Provider: OpenRouter API (openrouter)");
+        expect(body).toContain("- Model: anthropic/claude-test");
+        expect(body).toContain("- API URL: https://openrouter.ai/api/v1/chat/completions");
+        expect(body).not.toContain("sk-or-v1-sensitive-value");
+        expect(body).not.toContain("key=secret");
+    });
+
     test("does not offer issue reports for user configuration errors", () => {
         const error = createProviderError({
             provider: "openai",

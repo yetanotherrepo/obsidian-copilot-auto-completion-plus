@@ -79,4 +79,16 @@ describe("SettingsView quick setup", () => {
         expect(html).toContain("Trigger Words");
         expect(html).toContain("Prompt Engineering");
     });
+
+    test("shows OpenRouter settings for an OpenRouter vault", () => {
+        const settings = cloneDeep(DEFAULT_SETTINGS);
+        settings.apiProvider = "openrouter";
+        settings.openRouterApiSettings.model = "anthropic/claude-test";
+
+        const html = renderSettings(settings);
+
+        expect(html).toContain("OpenRouter API Key");
+        expect(html).toContain("anthropic/claude-test");
+        expect(html).toContain("Test Connection");
+    });
 });

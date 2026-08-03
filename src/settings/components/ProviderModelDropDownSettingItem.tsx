@@ -183,6 +183,9 @@ function endpointFor(settings: Settings): string {
     if (settings.apiProvider === "anthropic") {
         return settings.anthropicApiSettings.url;
     }
+    if (settings.apiProvider === "openrouter") {
+        return settings.openRouterApiSettings.url;
+    }
     if (settings.apiProvider === "gemini") {
         return settings.geminiApiSettings.url;
     }

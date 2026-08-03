@@ -20,6 +20,8 @@ for (const check of forbiddenDocsText) {
 }
 
 checkReleaseWorkflowAssets();
+checkWorkflowActionPins();
+checkVersionConsistency();
 checkIssueForms();
 checkLocalMarkdownLinks();
 
@@ -40,8 +42,53 @@ function checkReleaseWorkflowAssets() {
             failures.push(`Release workflow is missing ${asset}.`);
         }
     }
-    if (!workflow.includes("actions/attest-build-provenance@v3")) {
+    if (!workflow.includes("actions/attest-build-provenance@")) {
         failures.push("Release workflow must generate artifact attestations.");
+    }
+    if (!workflow.includes("npm audit --audit-level=high")) {
+        failures.push("Release workflow must run the high-severity dependency audit.");
+    }
+    if (!workflow.includes("git merge-base --is-ancestor")) {
+        failures.push("Release workflow must verify that the tag commit belongs to master.");
+    }
+    if (!workflow.includes("GITHUB_REF_NAME")) {
+        failures.push("Release workflow must compare the release tag with the package version.");
+    }
+}
+
+function checkWorkflowActionPins() {
+    for (const file of [".github/workflows/cicd.yml", ".github/workflows/release.yml"]) {
+        const workflow = read(file);
+        if (/uses:\s+[^\s#]+@v\d+/i.test(workflow)) {
+            failures.push(`${file} must pin third-party actions to full commit SHAs.`);
+        }
+    }
+}
+
+function checkVersionConsistency() {
+    const packageJson = JSON.parse(read("package.json"));
+    const manifest = JSON.parse(read("manifest.json"));
+    const versions = JSON.parse(read("versions.json"));
+    const changelog = read("CHANGELOG.md");
+    const version = packageJson.version;
+
+    if (!/^\d+\.\d+\.\d+$/.test(version)) {
+        failures.push(`Package version must use x.y.z: ${version}`);
+    }
+    if (manifest.version !== version) {
+        failures.push(`manifest.json version ${manifest.version} does not match package version ${version}.`);
+    }
+    if (versions[version] !== manifest.minAppVersion) {
+        failures.push(`versions.json must map ${version} to ${manifest.minAppVersion}.`);
+    }
+
+    const escapedVersion = version.replace(/\./g, "\\.");
+    const releaseSection = changelog.match(new RegExp(
+        `^## ${escapedVersion}\\s*\\n([\\s\\S]*?)(?=^## |$)`,
+        "m"
+    ));
+    if (!releaseSection || releaseSection[1].trim().length === 0) {
+        failures.push(`CHANGELOG.md must contain release notes under ## ${version}.`);
     }
 }
 

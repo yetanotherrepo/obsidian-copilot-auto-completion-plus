@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.0
+- Add OpenRouter as a separate API provider.
+- Add OpenRouter model loading, connection tests, and provider-specific error handling.
+- Restrict OpenRouter requests to the official HTTPS endpoint.
+- Preserve existing provider settings during the automatic settings migration.
+- Add release checks for version consistency, dependency security, and tag provenance.
+
 ## 1.3.4
 - Fix CI lint coverage for the Quick Setup settings tests.
 
