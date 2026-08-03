@@ -108,7 +108,7 @@ describe("OpenRouterApiClient", () => {
         }
     });
 
-    test("loads only models that can return text", async () => {
+    test("loads only standard text chat models", async () => {
         mockedRequestUrl.mockResolvedValue({
             status: 200,
             json: {
@@ -122,6 +122,25 @@ describe("OpenRouterApiClient", () => {
                         id: "provider/image-model",
                         name: "Image Model",
                         architecture: {output_modalities: ["image"]},
+                    },
+                    {
+                        id: "provider/multimodal-output",
+                        name: "Text and Image Model",
+                        architecture: {output_modalities: ["text", "image"]},
+                    },
+                    {
+                        id: "morph/morph-v3-fast",
+                        name: "Morph V3 Fast",
+                        architecture: {output_modalities: ["text"]},
+                    },
+                    {
+                        id: "meta-llama/llama-guard-4-12b",
+                        name: "Llama Guard",
+                        architecture: {output_modalities: ["text"]},
+                    },
+                    {
+                        id: "provider/no-output-metadata",
+                        name: "Unknown Output Model",
                     },
                 ],
             },
@@ -142,6 +161,27 @@ describe("OpenRouterApiClient", () => {
         expect(request.url).toEqual(
             "https://openrouter.ai/api/v1/models?output_modalities=text&limit=1000"
         );
+    });
+
+    test("classifies an HTTP 400 response as an invalid request", async () => {
+        mockedRequestUrl.mockResolvedValue({
+            status: 400,
+            json: {error: {message: "The selected model requires a special prompt format."}},
+        });
+        const client = new OpenRouterApiClient(
+            "openrouter-key",
+            "https://openrouter.ai/api/v1/chat/completions",
+            "provider/specialized-model",
+            modelOptions
+        );
+
+        const result = await client.query([{role: "user", content: "Hello"}]);
+
+        expect(result.isErr()).toEqual(true);
+        if (result.isErr()) {
+            expect(result.error.code).toEqual("invalid_request");
+            expect(result.error.statusCode).toEqual(400);
+        }
     });
 
     test.each([

@@ -3,7 +3,11 @@ import {err, Result} from "neverthrow";
 import {Settings} from "../../settings/versions";
 import {makeProviderRequest} from "./utils";
 import {ModelSelection, providerErrorToError, sanitizeEndpoint} from "../provider";
-import {isOfficialOpenRouterChatUrl, openRouterModelsUrl} from "../../openrouter";
+import {
+    isOfficialOpenRouterChatUrl,
+    openRouterModelsUrl,
+    selectOpenRouterAutocompleteModels,
+} from "../../openrouter";
 
 export type {ModelSelection} from "../provider";
 
@@ -271,22 +275,7 @@ async function fetchOpenRouterModels(settings: Settings): Promise<Result<ModelSe
         model: settings.openRouterApiSettings.model || "Not set",
         endpoint: sanitizeEndpoint(modelsUrl),
     })).mapErr(providerErrorToError);
-    return response.map((data: any) => {
-        const models = Array.isArray(data.data) ? data.data : [];
-        return models
-            .filter((model: any) => {
-                if (!model || typeof model.id !== "string") {
-                    return false;
-                }
-                const outputModalities = model.architecture?.output_modalities || model.output_modalities;
-                return !Array.isArray(outputModalities) || outputModalities.includes("text");
-            })
-            .map((model: any) => ({
-                id: model.id,
-                name: typeof model.name === "string" && model.name.length > 0 ? model.name : model.id,
-            }))
-            .sort((left: ModelSelection, right: ModelSelection) => left.name.localeCompare(right.name));
-    });
+    return response.map(selectOpenRouterAutocompleteModels);
 }
 
 function isLikelyOpenAITextModel(id: string): boolean {

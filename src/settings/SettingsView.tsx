@@ -62,12 +62,28 @@ const PROVIDER_OPTIONS: Record<Settings["apiProvider"], string> = {
 
 export default function SettingsView(props: IProps): React.JSX.Element {
     const [settings, _setSettings] = useState<Settings>(props.settings);
+    const connectionSettingsRef = React.useRef<Settings>(settings);
+    const connectionRevisionRef = React.useRef(0);
+    if (!sameConnectionConfiguration(connectionSettingsRef.current, settings)) {
+        connectionSettingsRef.current = settings;
+        connectionRevisionRef.current += 1;
+    }
+    const connectionRevision = connectionRevisionRef.current;
+    const [verifiedConnection, setVerifiedConnection] = useState<{
+        provider: Settings["apiProvider"];
+        model: string;
+        revision: number;
+    } | null>(null);
     const errors = checkForErrors(settings);
     const modelCapabilities = capabilitiesForSettings(settings);
 
     React.useEffect(() => {
         _setSettings(props.settings);
     }, [props.settings]);
+
+    React.useEffect(() => {
+        setVerifiedConnection(null);
+    }, [connectionRevision]);
 
     const updateSettings = (update: Partial<Settings>) => {
         _setSettings((settings: Settings) => {
@@ -389,6 +405,7 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                     mode={mode}
                     settings={settings}
                     value={settings.openAIApiSettings.model}
+                    verifiedModel={verifiedModelFor(provider)}
                     setValue={(value: string) =>
                         updateSettings({
                             openAIApiSettings: {
@@ -407,6 +424,7 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                     mode={mode}
                     settings={settings}
                     value={settings.anthropicApiSettings.model}
+                    verifiedModel={verifiedModelFor(provider)}
                     setValue={(value: string) =>
                         updateSettings({
                             anthropicApiSettings: {
@@ -425,6 +443,7 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                     mode={mode}
                     settings={settings}
                     value={settings.openRouterApiSettings.model}
+                    verifiedModel={verifiedModelFor(provider)}
                     setValue={(value: string) =>
                         updateSettings({
                             openRouterApiSettings: {
@@ -443,6 +462,7 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                     mode={mode}
                     settings={settings}
                     value={settings.geminiApiSettings.model}
+                    verifiedModel={verifiedModelFor(provider)}
                     setValue={(value: string) =>
                         updateSettings({
                             geminiApiSettings: {
@@ -506,7 +526,15 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                 {renderQuickEndpointIfNeeded(provider)}
                 {provider !== "ollama" && renderKeySetting(provider, true)}
                 {renderModelSetting(provider, "quick")}
-                <ConnectivityCheck key={`quick-${provider}`} pluginVersion={props.pluginVersion} settings={settings}/>
+                <ConnectivityCheck
+                    key={`quick-${provider}`}
+                    pluginVersion={props.pluginVersion}
+                    settings={settings}
+                    connectionRevision={connectionRevision}
+                    onVerificationChange={(verified) => setVerifiedConnection(verified
+                        ? {provider, model: modelFor(settings), revision: connectionRevision}
+                        : null)}
+                />
             </>
         );
     };
@@ -976,10 +1004,81 @@ export default function SettingsView(props: IProps): React.JSX.Element {
         return errors.get("ollamaApiSettings.url");
     };
 
+    const verifiedModelFor = (provider: Settings["apiProvider"]): string | undefined => {
+        return verifiedConnection?.provider === provider
+            && verifiedConnection.revision === connectionRevision
+            ? verifiedConnection.model
+            : undefined;
+    };
+
     return (
         <div>
             {renderQuickSetup()}
             {renderAdvancedSettings()}
         </div>
     );
+}
+
+function modelFor(settings: Settings): string {
+    if (settings.apiProvider === "openai") {
+        return settings.openAIApiSettings.model;
+    }
+    if (settings.apiProvider === "anthropic") {
+        return settings.anthropicApiSettings.model;
+    }
+    if (settings.apiProvider === "openrouter") {
+        return settings.openRouterApiSettings.model;
+    }
+    if (settings.apiProvider === "gemini") {
+        return settings.geminiApiSettings.model;
+    }
+    if (settings.apiProvider === "azure") {
+        return "Azure deployment";
+    }
+    return settings.ollamaApiSettings.model;
+}
+
+function keyFor(settings: Settings): string {
+    if (settings.apiProvider === "openai") {
+        return settings.openAIApiSettings.key;
+    }
+    if (settings.apiProvider === "anthropic") {
+        return settings.anthropicApiSettings.key;
+    }
+    if (settings.apiProvider === "openrouter") {
+        return settings.openRouterApiSettings.key;
+    }
+    if (settings.apiProvider === "gemini") {
+        return settings.geminiApiSettings.key;
+    }
+    if (settings.apiProvider === "azure") {
+        return settings.azureOAIApiSettings.key;
+    }
+    return "";
+}
+
+function endpointFor(settings: Settings): string {
+    if (settings.apiProvider === "openai") {
+        return settings.openAIApiSettings.url;
+    }
+    if (settings.apiProvider === "anthropic") {
+        return settings.anthropicApiSettings.url;
+    }
+    if (settings.apiProvider === "openrouter") {
+        return settings.openRouterApiSettings.url;
+    }
+    if (settings.apiProvider === "gemini") {
+        return settings.geminiApiSettings.url;
+    }
+    if (settings.apiProvider === "azure") {
+        return settings.azureOAIApiSettings.url;
+    }
+    return settings.ollamaApiSettings.url;
+}
+
+function sameConnectionConfiguration(left: Settings, right: Settings): boolean {
+    return left.apiProvider === right.apiProvider
+        && modelFor(left) === modelFor(right)
+        && keyFor(left) === keyFor(right)
+        && endpointFor(left) === endpointFor(right);
 }

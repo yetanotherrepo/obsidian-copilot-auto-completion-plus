@@ -60,7 +60,7 @@ describe("provider model recommendations", () => {
         expect(options[1]).toEqual({id: "gpt-5.4-mini", name: "GPT-5.4 mini"});
     });
 
-    test("loads OpenRouter text models for the settings dropdown", async () => {
+    test("loads only OpenRouter models suitable for text autocomplete", async () => {
         mockedRequestUrl.mockResolvedValue({
             status: 200,
             json: {
@@ -74,6 +74,21 @@ describe("provider model recommendations", () => {
                         id: "provider/audio-model",
                         name: "Audio Model",
                         architecture: {output_modalities: ["audio"]},
+                    },
+                    {
+                        id: "provider/text-and-audio-model",
+                        name: "Text and Audio Model",
+                        architecture: {output_modalities: ["text", "audio"]},
+                    },
+                    {
+                        id: "morph/morph-v3-large",
+                        name: "Morph V3 Large",
+                        architecture: {output_modalities: ["text"]},
+                    },
+                    {
+                        id: "openai/gpt-oss-safeguard-20b",
+                        name: "Safeguard",
+                        architecture: {output_modalities: ["text"]},
                     },
                 ],
             },

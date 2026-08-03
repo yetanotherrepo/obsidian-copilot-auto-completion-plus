@@ -17,6 +17,7 @@ export type ProviderErrorCode =
     | "empty_response"
     | "model_refusal"
     | "not_configured"
+    | "invalid_request"
     | "unknown";
 
 export interface ModelCapabilities {
@@ -322,6 +323,8 @@ export function providerErrorFromHttpResponse(
 
     if (unsupportedParameter) {
         code = "unsupported_parameter";
+    } else if (statusCode === 400) {
+        code = "invalid_request";
     } else if (statusCode === 401 || statusCode === 403) {
         code = "invalid_key";
     } else if (statusCode === 402) {
@@ -386,6 +389,9 @@ export function humanizeProviderError(error: ProviderError): string {
     }
     if (error.code === "not_configured") {
         return error.message;
+    }
+    if (error.code === "invalid_request") {
+        return `${provider} rejected the request (HTTP 400). The selected model might not support standard chat completions or the current model options.`;
     }
     return error.message;
 }

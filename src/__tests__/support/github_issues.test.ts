@@ -148,6 +148,25 @@ describe("GitHub issue reporting", () => {
         expect(body).not.toContain("near private note text");
     });
 
+    test("describes invalid provider requests without copying provider text", () => {
+        const error = createProviderError({
+            provider: "openrouter",
+            code: "invalid_request",
+            message: "Bearer secret-token-value-1234567890 near private note text",
+            statusCode: 400,
+            safeDiagnostics: {
+                provider: "openrouter",
+                model: "provider/specialized-model",
+                endpoint: "https://openrouter.ai/api/v1/chat/completions",
+            },
+        });
+        const body = issueBody({source: "prediction", error});
+
+        expect(body).toContain("OpenRouter rejected the request (HTTP 400).");
+        expect(body).not.toContain("secret-token-value-1234567890");
+        expect(body).not.toContain("near private note text");
+    });
+
     test("allowlists provider-controlled diagnostic strings", () => {
         const body = issueBody({
             source: "prediction",
