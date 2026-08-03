@@ -25,6 +25,7 @@ import {err, ok, Result} from "neverthrow";
 import AnthropicApiClient from "../api_clients/AnthropicApiClient";
 import GeminiApiClient from "../api_clients/GeminiApiClient";
 import SensitiveDataRedactor from "../pre_processors/sensitive_data_redactor";
+import OpenRouterApiClient from "../api_clients/OpenRouterApiClient";
 
 class ChatGPTWithReasoning implements PredictionService {
     private readonly client: ApiClient;
@@ -90,6 +91,8 @@ class ChatGPTWithReasoning implements PredictionService {
         let client: ApiClient;
         if (settings.apiProvider === "openai") {
             client = OpenAIApiClient.fromSettings(settings);
+        } else if (settings.apiProvider === "openrouter") {
+            client = OpenRouterApiClient.fromSettings(settings);
         } else if (settings.apiProvider === "azure") {
             client = AzureOAIClient.fromSettings(settings);
         } else if (settings.apiProvider === "ollama") {

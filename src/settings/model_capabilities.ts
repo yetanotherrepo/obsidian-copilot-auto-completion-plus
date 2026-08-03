@@ -16,6 +16,13 @@ export function capabilitiesForSettings(settings: Settings): ModelCapabilities {
             settings.anthropicApiSettings.url
         );
     }
+    if (settings.apiProvider === "openrouter") {
+        return defaultModelCapabilities(
+            "openrouter",
+            settings.openRouterApiSettings.model,
+            settings.openRouterApiSettings.url
+        );
+    }
     if (settings.apiProvider === "gemini") {
         return defaultModelCapabilities(
             "gemini",

@@ -31,4 +31,19 @@ describe("settings model capabilities", () => {
         expect(capabilities.supportsFrequencyPenalty).toEqual(true);
         expect(capabilities.supportsPresencePenalty).toEqual(true);
     });
+
+    test("uses OpenRouter chat capabilities for regular models", () => {
+        const settings = cloneDeep(DEFAULT_SETTINGS);
+        settings.apiProvider = "openrouter";
+        settings.openRouterApiSettings.model = "anthropic/claude-test";
+
+        const capabilities = capabilitiesForSettings(settings);
+
+        expect(capabilities.supportsTemperature).toEqual(true);
+        expect(capabilities.supportsTopP).toEqual(true);
+        expect(capabilities.supportsFrequencyPenalty).toEqual(true);
+        expect(capabilities.supportsPresencePenalty).toEqual(true);
+        expect(capabilities.supportsMaxTokens).toEqual(true);
+        expect(capabilities.supportsModelListing).toEqual(true);
+    });
 });

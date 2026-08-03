@@ -2,12 +2,13 @@ import {err, Result} from "neverthrow";
 
 import {Settings} from "../../settings/versions";
 import {makeProviderRequest} from "./utils";
-import {ModelSelection, ProviderName, providerErrorToError, sanitizeEndpoint} from "../provider";
+import {ModelSelection, providerErrorToError, sanitizeEndpoint} from "../provider";
+import {isOfficialOpenRouterChatUrl, openRouterModelsUrl} from "../../openrouter";
 
 export type {ModelSelection} from "../provider";
 
 type CloudModelProvider = "openai" | "anthropic" | "gemini";
-type QuickModelProvider = Exclude<ProviderName, "azure" | "ollama">;
+type QuickModelProvider = "openai" | "anthropic" | "gemini";
 
 export interface RecommendedModel extends ModelSelection {
     provider: QuickModelProvider;
@@ -131,6 +132,9 @@ export async function fetchModelsForProvider(settings: Settings): Promise<Result
         if (settings.apiProvider === "gemini") {
             return fetchGeminiModels(settings);
         }
+        if (settings.apiProvider === "openrouter") {
+            return fetchOpenRouterModels(settings);
+        }
         throw new Error(`Model loading is not supported for ${settings.apiProvider}`);
     } catch (error) {
         return err(error instanceof Error ? error : new Error(String(error)));
@@ -246,6 +250,42 @@ async function fetchGeminiModels(settings: Settings): Promise<Result<ModelSelect
                 };
             })
             .filter((model: ModelSelection) => model.id.length > 0);
+    });
+}
+
+async function fetchOpenRouterModels(settings: Settings): Promise<Result<ModelSelection[], Error>> {
+    if (!isOfficialOpenRouterChatUrl(settings.openRouterApiSettings.url)) {
+        return err(new Error("OpenRouter API URL must use the official HTTPS endpoint."));
+    }
+    const modelsUrl = openRouterModelsUrl();
+    const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://github.com/yetanotherrepo/obsidian-copilot-auto-completion-plus",
+        "X-OpenRouter-Title": "Copilot Auto Completion Plus",
+    };
+    if (settings.openRouterApiSettings.key) {
+        headers.Authorization = `Bearer ${settings.openRouterApiSettings.key}`;
+    }
+    const response = (await makeProviderRequest("openrouter", modelsUrl, "GET", undefined, headers, {
+        provider: "openrouter",
+        model: settings.openRouterApiSettings.model || "Not set",
+        endpoint: sanitizeEndpoint(modelsUrl),
+    })).mapErr(providerErrorToError);
+    return response.map((data: any) => {
+        const models = Array.isArray(data.data) ? data.data : [];
+        return models
+            .filter((model: any) => {
+                if (!model || typeof model.id !== "string") {
+                    return false;
+                }
+                const outputModalities = model.architecture?.output_modalities || model.output_modalities;
+                return !Array.isArray(outputModalities) || outputModalities.includes("text");
+            })
+            .map((model: any) => ({
+                id: model.id,
+                name: typeof model.name === "string" && model.name.length > 0 ? model.name : model.id,
+            }))
+            .sort((left: ModelSelection, right: ModelSelection) => left.name.localeCompare(right.name));
     });
 }
 

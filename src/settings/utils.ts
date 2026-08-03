@@ -1,6 +1,14 @@
 import {DEFAULT_SETTINGS, PluginData, Settings, settingsSchema} from "./versions";
 import {z, ZodError, ZodIssueCode, ZodType} from 'zod';
-import {isSettingsV0, isSettingsV1, isSettingsV2, migrateFromV0ToV1, migrateFromV1ToV2} from "./versions/migration";
+import {
+    isSettingsV0,
+    isSettingsV1,
+    isSettingsV2,
+    isSettingsV3,
+    migrateFromV0ToV1,
+    migrateFromV1ToV2,
+    migrateFromV2ToV3,
+} from "./versions/migration";
 import {err, ok, Result} from "neverthrow";
 import * as mm from "micromatch";
 
@@ -156,7 +164,10 @@ export function deserializeSettings(data: JSONObject | null | undefined): Result
     if (isSettingsV1(settings)) {
         settings = migrateFromV1ToV2(settings);
     }
-    if (!isSettingsV2(settings)) {
+    if (isSettingsV2(settings)) {
+        settings = migrateFromV2ToV3(settings);
+    }
+    if (!isSettingsV3(settings)) {
         return fixStructureAndValueErrors(settingsSchema, settings, DEFAULT_SETTINGS);
     }
 

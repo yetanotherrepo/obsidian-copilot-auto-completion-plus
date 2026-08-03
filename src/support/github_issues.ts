@@ -101,6 +101,7 @@ function issueTitle(context: IssueReportContext): string {
 function providerLabel(settings: Settings): string {
     const labels: Record<Settings["apiProvider"], string> = {
         openai: "OpenAI API",
+        openrouter: "OpenRouter API",
         anthropic: "Anthropic API",
         gemini: "Gemini API",
         azure: "Azure OpenAI API",
@@ -115,6 +116,9 @@ function selectedModel(settings: Settings): string {
     }
     if (settings.apiProvider === "anthropic") {
         return settings.anthropicApiSettings.model || "Not set";
+    }
+    if (settings.apiProvider === "openrouter") {
+        return settings.openRouterApiSettings.model || "Not set";
     }
     if (settings.apiProvider === "gemini") {
         return settings.geminiApiSettings.model || "Not set";
@@ -131,6 +135,9 @@ function selectedEndpoint(settings: Settings): string {
     }
     if (settings.apiProvider === "anthropic") {
         return sanitizeEndpoint(settings.anthropicApiSettings.url);
+    }
+    if (settings.apiProvider === "openrouter") {
+        return sanitizeEndpoint(settings.openRouterApiSettings.url);
     }
     if (settings.apiProvider === "gemini") {
         return sanitizeEndpoint(settings.geminiApiSettings.url);

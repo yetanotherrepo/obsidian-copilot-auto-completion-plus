@@ -25,24 +25,7 @@ You can now make changes to the plugin and test them locally.
 If your changes could benefit others, feel free to submit a pull request.
 
 ## Making a Release
-To make a release, follow these steps:
-1. Update the version number in the `package.json` file.
-2. Execute the following commands to synchronize the version number across all files:
-    ```bash
-    npm install
-    npm run version
-    ```
-3. Add an entry for the new version to the `CHANGELOG.md` file.
-4. Commit these updates to the master branch.
-5. Ensure you have the latest version of the master branch:
-    ```bash
-    git checkout master
-    git pull
-    ```
-6. Create a release with the following commands:
-    ```bash
-    git tag -a $(jq -r '.version' package.json) -m "Release $(jq -r '.version' package.json)"
-    git push origin $(jq -r '.version' package.json)
-    ```
 
-This process will automatically trigger a GitHub action to build the plugin and upload it to the release.
+Use the release procedure in [docs/publishing.md](docs/publishing.md). The release tag must use `x.y.z`. Do not add a `v` prefix.
+
+The release workflow accepts only commits that belong to `master`. It runs the build, tests, documentation checks, and dependency audit. It then creates attestations and publishes the supported plugin files.

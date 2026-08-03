@@ -32,4 +32,4 @@ repos:
             name: keep-version-in-sync
             language: system
             pass_filenames: false
-            entry: npm run version
+            entry: node scripts/check-version-sync.mjs

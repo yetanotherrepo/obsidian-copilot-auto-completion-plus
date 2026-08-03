@@ -14,6 +14,11 @@ import {
     Settings as SettingsV2,
     settingsSchema as settingsSchemaV2
 } from "./v2/v2";
+import {
+    DEFAULT_SETTINGS as DEFAULT_SETTINGS_V3,
+    Settings as SettingsV3,
+    settingsSchema as settingsSchemaV3
+} from "./v3/v3";
 
 export function migrateFromV0ToV1(settings: SettingsV0): SettingsV1 {
     // eslint-disable  @typescript-eslint/no-explicit-any
@@ -75,6 +80,14 @@ export function migrateFromV1ToV2(settings: SettingsV1): SettingsV2 {
     return settingsSchemaV2.parse(updatedSettings);
 }
 
+export function migrateFromV2ToV3(settings: SettingsV2): SettingsV3 {
+    return settingsSchemaV3.parse({
+        ...cloneJson(settings),
+        version: "3",
+        openRouterApiSettings: cloneJson(DEFAULT_SETTINGS_V3.openRouterApiSettings),
+    });
+}
+
 
 function migrateDefaultSettings(setting: any, previousDefault: any, currentDefault: any): any {
     const unchangedDefaultProperties = findEqualPaths(setting, previousDefault);
@@ -100,6 +113,11 @@ export const isSettingsV1 = (settings: object): boolean => {
 
 export const isSettingsV2 = (settings: object): boolean => {
     const result = settingsSchemaV2.safeParse(settings);
+    return result.success;
+}
+
+export const isSettingsV3 = (settings: object): boolean => {
+    const result = settingsSchemaV3.safeParse(settings);
     return result.success;
 }
 
