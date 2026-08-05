@@ -45,6 +45,7 @@ interface IProps {
 const PROVIDER_LABELS: Record<Settings["apiProvider"], string> = {
     openai: "OpenAI",
     openrouter: "OpenRouter",
+    deepseek: "DeepSeek",
     anthropic: "Anthropic",
     gemini: "Gemini",
     azure: "Azure OpenAI",
@@ -54,6 +55,7 @@ const PROVIDER_LABELS: Record<Settings["apiProvider"], string> = {
 const PROVIDER_OPTIONS: Record<Settings["apiProvider"], string> = {
     openai: "OpenAI API",
     openrouter: "OpenRouter API",
+    deepseek: "DeepSeek API",
     anthropic: "Anthropic API",
     gemini: "Gemini API",
     azure: "Azure OAI API",
@@ -103,6 +105,9 @@ export default function SettingsView(props: IProps): React.JSX.Element {
         const openRouterApiSettings = {
             ...settings.openRouterApiSettings,
         };
+        const deepSeekApiSettings = {
+            ...settings.deepSeekApiSettings,
+        };
         const anthropicApiSettings = {
             ...settings.anthropicApiSettings,
         };
@@ -119,6 +124,7 @@ export default function SettingsView(props: IProps): React.JSX.Element {
             azureOAIApiSettings,
             openAIApiSettings,
             openRouterApiSettings,
+            deepSeekApiSettings,
             anthropicApiSettings,
             geminiApiSettings,
             ollamaApiSettings,
@@ -132,6 +138,7 @@ export default function SettingsView(props: IProps): React.JSX.Element {
         if (
             value === "openai"
             || value === "openrouter"
+            || value === "deepseek"
             || value === "azure"
             || value === "ollama"
             || value === "anthropic"
@@ -159,6 +166,8 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                 : `${PROVIDER_LABELS[provider]} API URL`;
         const description = provider === "openrouter"
             ? "OpenRouter requests use this official HTTPS endpoint. Custom endpoints are not accepted."
+            : provider === "deepseek"
+                ? "DeepSeek requests use this official HTTPS endpoint. Custom endpoints are not accepted."
             : mode === "quick"
                 ? "Custom endpoint for this provider."
                 : "The endpoint used for API requests.";
@@ -219,6 +228,27 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                         updateSettings({
                             openRouterApiSettings: {
                                 ...settings.openRouterApiSettings,
+                                url: value,
+                            },
+                        })
+                    }
+                />
+            );
+        }
+        if (provider === "deepseek") {
+            return (
+                <TextSettingItem
+                    name={name}
+                    description={description}
+                    placeholder={"https://api.deepseek.com/chat/completions"}
+                    type="url"
+                    inputMode="url"
+                    value={settings.deepSeekApiSettings.url}
+                    errorMessage={errors.get("deepSeekApiSettings.url")}
+                    setValue={(value: string) =>
+                        updateSettings({
+                            deepSeekApiSettings: {
+                                ...settings.deepSeekApiSettings,
                                 url: value,
                             },
                         })
@@ -356,6 +386,27 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                 />
             );
         }
+        if (provider === "deepseek") {
+            return (
+                <TextSettingItem
+                    name={"DeepSeek API Key"}
+                    description={description}
+                    placeholder={"Your DeepSeek API key…"}
+                    password
+                    autoComplete="off"
+                    value={settings.deepSeekApiSettings.key}
+                    errorMessage={errors.get("deepSeekApiSettings.key")}
+                    setValue={(value: string) =>
+                        updateSettings({
+                            deepSeekApiSettings: {
+                                ...settings.deepSeekApiSettings,
+                                key: value,
+                            },
+                        })
+                    }
+                />
+            );
+        }
         if (provider === "gemini") {
             return (
                 <TextSettingItem
@@ -453,6 +504,25 @@ export default function SettingsView(props: IProps): React.JSX.Element {
                         })
                     }
                     errorMessage={errors.get("openRouterApiSettings.model")}
+                />
+            );
+        }
+        if (provider === "deepseek") {
+            return (
+                <ProviderModelDropDownSettingItem
+                    mode={mode}
+                    settings={settings}
+                    value={settings.deepSeekApiSettings.model}
+                    verifiedModel={verifiedModelFor(provider)}
+                    setValue={(value: string) =>
+                        updateSettings({
+                            deepSeekApiSettings: {
+                                ...settings.deepSeekApiSettings,
+                                model: value,
+                            },
+                        })
+                    }
+                    errorMessage={errors.get("deepSeekApiSettings.model")}
                 />
             );
         }
@@ -957,6 +1027,9 @@ export default function SettingsView(props: IProps): React.JSX.Element {
         if (provider === "openrouter") {
             return settings.openRouterApiSettings.url;
         }
+        if (provider === "deepseek") {
+            return settings.deepSeekApiSettings.url;
+        }
         if (provider === "gemini") {
             return settings.geminiApiSettings.url;
         }
@@ -976,6 +1049,9 @@ export default function SettingsView(props: IProps): React.JSX.Element {
         if (provider === "openrouter") {
             return DEFAULT_SETTINGS.openRouterApiSettings.url;
         }
+        if (provider === "deepseek") {
+            return DEFAULT_SETTINGS.deepSeekApiSettings.url;
+        }
         if (provider === "gemini") {
             return DEFAULT_SETTINGS.geminiApiSettings.url;
         }
@@ -994,6 +1070,9 @@ export default function SettingsView(props: IProps): React.JSX.Element {
         }
         if (provider === "openrouter") {
             return errors.get("openRouterApiSettings.url");
+        }
+        if (provider === "deepseek") {
+            return errors.get("deepSeekApiSettings.url");
         }
         if (provider === "gemini") {
             return errors.get("geminiApiSettings.url");
@@ -1029,6 +1108,9 @@ function modelFor(settings: Settings): string {
     if (settings.apiProvider === "openrouter") {
         return settings.openRouterApiSettings.model;
     }
+    if (settings.apiProvider === "deepseek") {
+        return settings.deepSeekApiSettings.model;
+    }
     if (settings.apiProvider === "gemini") {
         return settings.geminiApiSettings.model;
     }
@@ -1048,6 +1130,9 @@ function keyFor(settings: Settings): string {
     if (settings.apiProvider === "openrouter") {
         return settings.openRouterApiSettings.key;
     }
+    if (settings.apiProvider === "deepseek") {
+        return settings.deepSeekApiSettings.key;
+    }
     if (settings.apiProvider === "gemini") {
         return settings.geminiApiSettings.key;
     }
@@ -1066,6 +1151,9 @@ function endpointFor(settings: Settings): string {
     }
     if (settings.apiProvider === "openrouter") {
         return settings.openRouterApiSettings.url;
+    }
+    if (settings.apiProvider === "deepseek") {
+        return settings.deepSeekApiSettings.url;
     }
     if (settings.apiProvider === "gemini") {
         return settings.geminiApiSettings.url;

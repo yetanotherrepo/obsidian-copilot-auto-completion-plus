@@ -9,11 +9,16 @@ import {
     selectOpenRouterAutocompleteModels,
 } from "../../openrouter";
 import {readArray, readNumber, readString} from "../../unknown";
+import {
+    DEEPSEEK_MODELS_URL,
+    isOfficialDeepSeekChatUrl,
+    selectDeepSeekModels,
+} from "../../deepseek";
 
 export type {ModelSelection} from "../provider";
 
-type CloudModelProvider = "openai" | "anthropic" | "gemini";
-type QuickModelProvider = "openai" | "anthropic" | "gemini";
+type CloudModelProvider = "openai" | "deepseek" | "anthropic" | "gemini";
+type QuickModelProvider = "openai" | "deepseek" | "anthropic" | "gemini";
 
 export interface RecommendedModel extends ModelSelection {
     provider: QuickModelProvider;
@@ -26,9 +31,11 @@ export interface RecommendedModel extends ModelSelection {
 }
 
 const LAST_VERIFIED = "2026-05-30";
+const DEEPSEEK_LAST_VERIFIED = "2026-08-05";
 const OPENAI_MODELS_SOURCE = "https://developers.openai.com/api/docs/models";
 const ANTHROPIC_MODELS_SOURCE = "https://platform.claude.com/docs/en/about-claude/models/overview";
 const GEMINI_MODELS_SOURCE = "https://ai.google.dev/gemini-api/docs/models";
+const DEEPSEEK_MODELS_SOURCE = "https://api-docs.deepseek.com/api/list-models";
 
 const QUICK_MODELS: Record<QuickModelProvider, RecommendedModel[]> = {
     openai: [
@@ -36,6 +43,28 @@ const QUICK_MODELS: Record<QuickModelProvider, RecommendedModel[]> = {
         recommendedModel("openai", "gpt-5.4-mini", "GPT-5.4 mini", "Faster", "Recommended for autocomplete", true, OPENAI_MODELS_SOURCE),
         recommendedModel("openai", "gpt-5.4", "GPT-5.4", "Fast", "Balanced", false, OPENAI_MODELS_SOURCE),
         recommendedModel("openai", "gpt-5.5", "GPT-5.5", "Fast", "Best quality", false, OPENAI_MODELS_SOURCE),
+    ],
+    deepseek: [
+        recommendedModel(
+            "deepseek",
+            "deepseek-v4-flash",
+            "DeepSeek V4 Flash",
+            "Faster",
+            "Recommended for autocomplete",
+            true,
+            DEEPSEEK_MODELS_SOURCE,
+            DEEPSEEK_LAST_VERIFIED
+        ),
+        recommendedModel(
+            "deepseek",
+            "deepseek-v4-pro",
+            "DeepSeek V4 Pro",
+            "Fast",
+            "Higher quality",
+            false,
+            DEEPSEEK_MODELS_SOURCE,
+            DEEPSEEK_LAST_VERIFIED
+        ),
     ],
     anthropic: [
         recommendedModel("anthropic", "claude-haiku-4-5-20251001", "Claude Haiku 4.5", "Fastest", "Near-frontier", false, ANTHROPIC_MODELS_SOURCE),
@@ -62,6 +91,10 @@ const FALLBACK_MODELS: Record<CloudModelProvider, ModelSelection[]> = {
         {id: "gpt-4o", name: "GPT-4o"},
         {id: "gpt-4o-mini", name: "GPT-4o mini"},
     ],
+    deepseek: [
+        {id: "deepseek-v4-flash", name: "DeepSeek V4 Flash"},
+        {id: "deepseek-v4-pro", name: "DeepSeek V4 Pro"},
+    ],
     anthropic: [
         {id: "claude-haiku-4-5-20251001", name: "Claude Haiku 4.5"},
         {id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6"},
@@ -85,7 +118,8 @@ function recommendedModel(
     speedLabel: string,
     qualityLabel: string,
     recommended: boolean,
-    sourceUrl: string
+    sourceUrl: string,
+    lastVerified = LAST_VERIFIED
 ): RecommendedModel {
     return {
         provider,
@@ -96,19 +130,19 @@ function recommendedModel(
         recommended,
         quickVisible: true,
         sourceUrl,
-        lastVerified: LAST_VERIFIED,
+        lastVerified,
     };
 }
 
 export function getFallbackModels(provider: Settings["apiProvider"]): ModelSelection[] {
-    if (provider === "openai" || provider === "anthropic" || provider === "gemini") {
+    if (provider === "openai" || provider === "deepseek" || provider === "anthropic" || provider === "gemini") {
         return FALLBACK_MODELS[provider];
     }
     return [];
 }
 
 export function getQuickModels(provider: Settings["apiProvider"]): RecommendedModel[] {
-    if (provider === "openai" || provider === "anthropic" || provider === "gemini") {
+    if (provider === "openai" || provider === "deepseek" || provider === "anthropic" || provider === "gemini") {
         return QUICK_MODELS[provider].filter((model) => model.quickVisible);
     }
     return [];
@@ -139,6 +173,9 @@ export async function fetchModelsForProvider(settings: Settings): Promise<Result
         }
         if (settings.apiProvider === "openrouter") {
             return fetchOpenRouterModels(settings);
+        }
+        if (settings.apiProvider === "deepseek") {
+            return fetchDeepSeekModels(settings);
         }
         throw new Error(`Model loading is not supported for ${settings.apiProvider}`);
     } catch (error) {
@@ -286,6 +323,31 @@ async function fetchOpenRouterModels(settings: Settings): Promise<Result<ModelSe
         endpoint: sanitizeEndpoint(modelsUrl),
     })).mapErr(providerErrorToError);
     return response.map(selectOpenRouterAutocompleteModels);
+}
+
+async function fetchDeepSeekModels(settings: Settings): Promise<Result<ModelSelection[], Error>> {
+    if (!isOfficialDeepSeekChatUrl(settings.deepSeekApiSettings.url)) {
+        return err(new Error("DeepSeek API URL must use the official HTTPS endpoint."));
+    }
+    const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+    };
+    if (settings.deepSeekApiSettings.key) {
+        headers.Authorization = `Bearer ${settings.deepSeekApiSettings.key}`;
+    }
+    const response = (await makeProviderRequest(
+        "deepseek",
+        DEEPSEEK_MODELS_URL,
+        "GET",
+        undefined,
+        headers,
+        {
+            provider: "deepseek",
+            model: settings.deepSeekApiSettings.model || "Not set",
+            endpoint: sanitizeEndpoint(DEEPSEEK_MODELS_URL),
+        }
+    )).mapErr(providerErrorToError);
+    return response.map(selectDeepSeekModels);
 }
 
 function isLikelyOpenAITextModel(id: string): boolean {

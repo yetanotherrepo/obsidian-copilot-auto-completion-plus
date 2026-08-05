@@ -66,7 +66,7 @@ Submission fields:
   "id": "copilot-auto-completion-plus",
   "name": "Copilot Auto Completion Plus",
   "author": "Daniil Shipilov",
-  "description": "Adds configurable AI auto-completion using OpenAI, OpenRouter, Anthropic, Gemini, Azure OpenAI, or Ollama.",
+  "description": "Adds configurable AI auto-completion using OpenAI, OpenRouter, DeepSeek, Anthropic, Gemini, Azure OpenAI, or Ollama.",
   "repo": "yetanotherrepo/obsidian-copilot-auto-completion-plus"
 }
 ```

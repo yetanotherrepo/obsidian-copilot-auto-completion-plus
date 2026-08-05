@@ -122,6 +122,7 @@ function providerLabel(settings: Settings): string {
     const labels: Record<Settings["apiProvider"], string> = {
         openai: "OpenAI API",
         openrouter: "OpenRouter API",
+        deepseek: "DeepSeek API",
         anthropic: "Anthropic API",
         gemini: "Gemini API",
         azure: "Azure OpenAI API",
@@ -139,6 +140,9 @@ function selectedModel(settings: Settings): string {
     }
     if (settings.apiProvider === "openrouter") {
         return settings.openRouterApiSettings.model || "Not set";
+    }
+    if (settings.apiProvider === "deepseek") {
+        return settings.deepSeekApiSettings.model || "Not set";
     }
     if (settings.apiProvider === "gemini") {
         return settings.geminiApiSettings.model || "Not set";
@@ -158,6 +162,9 @@ function selectedEndpoint(settings: Settings): string {
     }
     if (settings.apiProvider === "openrouter") {
         return sanitizeEndpoint(settings.openRouterApiSettings.url);
+    }
+    if (settings.apiProvider === "deepseek") {
+        return sanitizeEndpoint(settings.deepSeekApiSettings.url);
     }
     if (settings.apiProvider === "gemini") {
         return sanitizeEndpoint(settings.geminiApiSettings.url);

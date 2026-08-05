@@ -46,4 +46,18 @@ describe("settings model capabilities", () => {
         expect(capabilities.supportsMaxTokens).toEqual(true);
         expect(capabilities.supportsModelListing).toEqual(true);
     });
+
+    test("uses only documented DeepSeek sampling controls", () => {
+        const settings = cloneDeep(DEFAULT_SETTINGS);
+        settings.apiProvider = "deepseek";
+
+        const capabilities = capabilitiesForSettings(settings);
+
+        expect(capabilities.supportsTemperature).toEqual(true);
+        expect(capabilities.supportsTopP).toEqual(true);
+        expect(capabilities.supportsFrequencyPenalty).toEqual(false);
+        expect(capabilities.supportsPresencePenalty).toEqual(false);
+        expect(capabilities.supportsMaxTokens).toEqual(true);
+        expect(capabilities.supportsModelListing).toEqual(true);
+    });
 });

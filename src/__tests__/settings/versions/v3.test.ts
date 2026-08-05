@@ -33,13 +33,18 @@ describe("settings v3", () => {
         expect(migrated.openRouterApiSettings).toEqual(DEFAULT_SETTINGS.openRouterApiSettings);
     });
 
-    test("loads persisted v2 data as v3", () => {
+    test("loads persisted v2 data through the current schema", () => {
         const result = deserializeSettings({settings: cloneDeep(DEFAULT_SETTINGS_V2)});
 
         expect(result.isOk()).toEqual(true);
         if (result.isOk()) {
-            expect(result.value.version).toEqual("3");
+            expect(result.value.version).toEqual("4");
             expect(result.value.openRouterApiSettings).toEqual(DEFAULT_SETTINGS.openRouterApiSettings);
+            expect(result.value.deepSeekApiSettings).toEqual({
+                key: "",
+                url: "https://api.deepseek.com/chat/completions",
+                model: "deepseek-v4-flash",
+            });
         }
     });
 

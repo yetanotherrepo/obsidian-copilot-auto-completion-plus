@@ -216,6 +216,9 @@ function endpointFor(settings: Settings): string {
     if (settings.apiProvider === "openrouter") {
         return settings.openRouterApiSettings.url;
     }
+    if (settings.apiProvider === "deepseek") {
+        return settings.deepSeekApiSettings.url;
+    }
     if (settings.apiProvider === "gemini") {
         return settings.geminiApiSettings.url;
     }

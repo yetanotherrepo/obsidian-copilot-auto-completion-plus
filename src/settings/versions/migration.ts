@@ -27,6 +27,11 @@ import {
     Settings as SettingsV3,
     settingsSchema as settingsSchemaV3,
 } from "./v3/v3";
+import {
+    DEFAULT_SETTINGS as DEFAULT_SETTINGS_V4,
+    Settings as SettingsV4,
+    settingsSchema as settingsSchemaV4,
+} from "./v4/v4";
 
 export function migrateFromV0ToV1(settings: SettingsV0): SettingsV1 {
     const updatedSettings: UnknownRecord = {...cloneJson(settings)};
@@ -97,6 +102,14 @@ export function migrateFromV2ToV3(settings: SettingsV2): SettingsV3 {
     });
 }
 
+export function migrateFromV3ToV4(settings: SettingsV3): SettingsV4 {
+    return settingsSchemaV4.parse({
+        ...cloneJson(settings),
+        version: "4",
+        deepSeekApiSettings: cloneJson(DEFAULT_SETTINGS_V4.deepSeekApiSettings),
+    });
+}
+
 export function isSettingsV0(settings: unknown): settings is SettingsV0 {
     return settingsSchemaV0.safeParse(settings).success;
 }
@@ -111,6 +124,10 @@ export function isSettingsV2(settings: unknown): settings is SettingsV2 {
 
 export function isSettingsV3(settings: unknown): settings is SettingsV3 {
     return settingsSchemaV3.safeParse(settings).success;
+}
+
+export function isSettingsV4(settings: unknown): settings is SettingsV4 {
+    return settingsSchemaV4.safeParse(settings).success;
 }
 
 function migrateDefaultSettings(

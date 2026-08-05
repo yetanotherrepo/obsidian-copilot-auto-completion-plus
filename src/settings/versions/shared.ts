@@ -1,4 +1,5 @@
 import {z} from "zod";
+import {isOfficialDeepSeekChatUrl} from "../../deepseek";
 import {isOfficialOpenRouterChatUrl} from "../../openrouter";
 
 export const MIN_DELAY = 0;
@@ -32,6 +33,14 @@ export const openRouterApiSettingsSchema = z.object({
     key: z.string(),
     url: z.string().url().refine(isOfficialOpenRouterChatUrl, {
         message: "OpenRouter API URL must be https://openrouter.ai/api/v1/chat/completions",
+    }),
+    model: z.string(),
+}).strict();
+
+export const deepSeekApiSettingsSchema = z.object({
+    key: z.string(),
+    url: z.string().url().refine(isOfficialDeepSeekChatUrl, {
+        message: "DeepSeek API URL must be https://api.deepseek.com/chat/completions",
     }),
     model: z.string(),
 }).strict();
