@@ -23,6 +23,13 @@ export function capabilitiesForSettings(settings: Settings): ModelCapabilities {
             settings.openRouterApiSettings.url
         );
     }
+    if (settings.apiProvider === "deepseek") {
+        return defaultModelCapabilities(
+            "deepseek",
+            settings.deepSeekApiSettings.model,
+            settings.deepSeekApiSettings.url
+        );
+    }
     if (settings.apiProvider === "gemini") {
         return defaultModelCapabilities(
             "gemini",

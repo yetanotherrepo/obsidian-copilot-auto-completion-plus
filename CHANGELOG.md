@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.0
+- Add DeepSeek as a separate API provider.
+- Add DeepSeek model loading, connection tests, diagnostics, and provider-specific errors.
+- Restrict DeepSeek requests to the official HTTPS endpoint.
+- Preserve existing provider settings during the automatic settings migration.
+
 ## 1.5.0
 - Add the Obsidian source-review rules to the local lint and release workflows.
 - Validate provider responses before the plugin reads response data.

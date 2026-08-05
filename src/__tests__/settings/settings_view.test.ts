@@ -93,6 +93,18 @@ describe("SettingsView quick setup", () => {
         expect(html).toContain("Test Connection");
     });
 
+    test("shows DeepSeek settings and current recommended models", () => {
+        const settings = cloneDeep(DEFAULT_SETTINGS);
+        settings.apiProvider = "deepseek";
+
+        const html = renderSettings(settings);
+
+        expect(html).toContain("DeepSeek API Key");
+        expect(html).toContain("DeepSeek V4 Flash");
+        expect(html).toContain("DeepSeek V4 Pro");
+        expect(html).toContain("Test Connection");
+    });
+
     test("marks unsupported OpenRouter models in the model selector", () => {
         const settings = cloneDeep(DEFAULT_SETTINGS);
         settings.apiProvider = "openrouter";

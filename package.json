@@ -1,7 +1,7 @@
 {
     "name": "obsidian-copilot-auto-completion-plus",
-    "version": "1.5.0",
-    "description": "Adds a highly configurable copilot-like auto-completion using OpenAI, OpenRouter, Anthropic, Gemini, Azure OpenAI, or Ollama.",
+    "version": "1.6.0",
+    "description": "Adds a highly configurable copilot-like auto-completion using OpenAI, OpenRouter, DeepSeek, Anthropic, Gemini, Azure OpenAI, or Ollama.",
     "main": "main.js",
     "scripts": {
         "dev": "node prepare_demo_vault.mjs && node esbuild.config.mjs",

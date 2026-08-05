@@ -1,7 +1,7 @@
 # Personalization and settings
 The plugin has been designed to be highly customizable. 
 The default settings view starts with Quick Setup. Enable autocomplete, enter the selected provider's API key, select a model, and test the connection.
-Advanced Settings contains provider switching, custom endpoints, model parameters, triggers, privacy, diagnostics, reset, and prompt engineering. OpenRouter is available in this provider list.
+Advanced Settings contains provider switching, endpoints, model parameters, triggers, privacy, diagnostics, reset, and prompt engineering. OpenRouter and DeepSeek are available in this provider list.
 
 ## Triggers
 The plugin has default triggers such as:

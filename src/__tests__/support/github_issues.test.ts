@@ -81,6 +81,20 @@ describe("GitHub issue reporting", () => {
         expect(body).not.toContain("key=secret");
     });
 
+    test("includes DeepSeek diagnostics without its API key", () => {
+        const settings = cloneDeep(DEFAULT_SETTINGS);
+        settings.apiProvider = "deepseek";
+        settings.deepSeekApiSettings.key = "sensitive-deepseek-key";
+        settings.deepSeekApiSettings.model = "deepseek-v4-flash";
+
+        const body = issueBody({source: "prediction", settings});
+
+        expect(body).toContain("- Provider: DeepSeek API (deepseek)");
+        expect(body).toContain("- Model: deepseek-v4-flash");
+        expect(body).toContain("- API URL: https://api.deepseek.com/chat/completions");
+        expect(body).not.toContain("sensitive-deepseek-key");
+    });
+
     test("does not offer issue reports for user configuration errors", () => {
         const error = createProviderError({
             provider: "openai",

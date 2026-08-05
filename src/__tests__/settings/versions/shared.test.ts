@@ -3,6 +3,7 @@ import {TypeOf} from "zod";
 import {
     anthropicApiSettingsSchema,
     azureOAIApiSettingsSchema,
+    deepSeekApiSettingsSchema,
     fewShotExampleSchema,
     geminiApiSettingsSchema,
     modelOptionsSchema,
@@ -149,6 +150,28 @@ describe('geminiApiSettingsSchema', () => {
     test('invalid url fails', () => {
         const data = {key: 'abc123', url: 'not an url', model: "gemini-3-flash-preview"};
         expect(() => geminiApiSettingsSchema.parse(data)).toThrow();
+    });
+});
+
+describe("deepSeekApiSettingsSchema", () => {
+    test("accepts the official API endpoint", () => {
+        const settings = {
+            key: "deepseek-key",
+            model: "deepseek-v4-flash",
+            url: "https://api.deepseek.com/chat/completions",
+        };
+
+        expect(deepSeekApiSettingsSchema.parse(settings)).toEqual(settings);
+    });
+
+    test("rejects a custom API endpoint", () => {
+        const settings = {
+            key: "deepseek-key",
+            model: "deepseek-v4-flash",
+            url: "https://example.com/chat/completions",
+        };
+
+        expect(() => deepSeekApiSettingsSchema.parse(settings)).toThrow();
     });
 });
 

@@ -3,7 +3,7 @@ import {Result} from "neverthrow";
 import {ChatMessage, ModelOptions} from "./types";
 import {isRecord, readRecord, readString} from "../unknown";
 
-export type ProviderName = "openai" | "openrouter" | "anthropic" | "gemini" | "azure" | "ollama";
+export type ProviderName = "openai" | "openrouter" | "deepseek" | "anthropic" | "gemini" | "azure" | "ollama";
 
 export type ProviderErrorCode =
     | "invalid_key"
@@ -136,6 +136,20 @@ export function defaultModelCapabilities(
             isReasoningModel,
             supportsModelListing: true,
             supportsStreaming: false,
+        };
+    }
+
+    if (provider === "deepseek") {
+        return {
+            supportsTemperature: true,
+            supportsTopP: true,
+            supportsFrequencyPenalty: false,
+            supportsPresencePenalty: false,
+            supportsMaxTokens: true,
+            isReasoningModel: false,
+            supportsModelListing: true,
+            supportsStreaming: false,
+            notes: ["DeepSeek requests use temperature, top_p, and max_tokens."],
         };
     }
 
@@ -401,6 +415,7 @@ export function providerDisplayName(provider: ProviderName): string {
     const labels: Record<ProviderName, string> = {
         openai: "OpenAI",
         openrouter: "OpenRouter",
+        deepseek: "DeepSeek",
         anthropic: "Anthropic",
         gemini: "Gemini",
         azure: "Azure OpenAI",

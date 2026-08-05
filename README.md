@@ -4,7 +4,7 @@ It uses large language models (LLMs) to generate text based on the `n` character
 It will show the suggested completion in transparent text next to your cursor. 
 You can then press Tab to insert the entire suggestion, or the right arrow key to insert part of the suggestion. 
 Additionally, you can press Escape or move the cursor to ignore the suggestion.
-The plugin supports OpenAI, OpenRouter, Anthropic, Gemini, Azure OpenAI, and Ollama.
+The plugin supports OpenAI, OpenRouter, DeepSeek, Anthropic, Gemini, Azure OpenAI, and Ollama.
 
 ![demo](assets/demo-static.gif)
 
@@ -16,7 +16,7 @@ The plugin offers the following features:
 - **Fill-in-the-Middle Auto-Completion**: The plugin provides suggestions based on the `n` characters before and after your cursor, displaying the proposed text as transparent overlay near your cursor, tailored to fit the current context. Want to know how it works? See the [how does the model work in detail?](docs/how%20does%20the%20model%20work%20in%20details.md) documentation.
 - **Context-Aware Suggestions**: The suggestions adapt to the current writing context. For instance, the plugin will offer text suggestions in paragraphs, code in code blocks, and LaTeX formulas in math blocks, among others. Want to know how it does this? See the [context aware few shot examples](docs/how%20does%20the%20model%20work%20in%20details.md#context-aware-few-shot-examples) documentation.
 - **Language-Aware Suggestions**: The automaticly tries to detect the language around the cursor and nudges the model to generate text in that language. See the [language detection documentation](docs/how%20does%20the%20model%20work%20in%20details.md#language-detection) for more information.
-- **Multiple API Providers**: The plugin supports [OpenAI](docs/how-to/OpenAI%20API%20setup%20guide.md), [OpenRouter](docs/how-to/OpenRouter%20API%20setup%20guide.md), [Anthropic](docs/how-to/Anthropic%20API%20setup%20guide.md), [Gemini](docs/how-to/Gemini%20API%20setup%20guide.md), [Azure OpenAI](docs/how-to/Azure%20API%20setup%20guide.md), and [Ollama](docs/how-to/Ollama%20setup%20guide.md). OpenAI uses the Responses API by default. OpenAI-compatible Chat Completions URLs remain supported. You can refresh the model list for OpenAI, OpenRouter, Anthropic, and Gemini.
+- **Multiple API Providers**: The plugin supports [OpenAI](docs/how-to/OpenAI%20API%20setup%20guide.md), [OpenRouter](docs/how-to/OpenRouter%20API%20setup%20guide.md), [DeepSeek](docs/how-to/DeepSeek%20API%20setup%20guide.md), [Anthropic](docs/how-to/Anthropic%20API%20setup%20guide.md), [Gemini](docs/how-to/Gemini%20API%20setup%20guide.md), [Azure OpenAI](docs/how-to/Azure%20API%20setup%20guide.md), and [Ollama](docs/how-to/Ollama%20setup%20guide.md). OpenAI uses the Responses API by default. OpenAI-compatible Chat Completions URLs remain supported. You can refresh models for OpenAI, OpenRouter, DeepSeek, Anthropic, and Gemini.
 - **Highly Customizable**: Configure elements like [triggers](docs/personalization%20and%20settings.md#triggers), [trigger delay](docs/personalization%20and%20settings.md#trigger-delay), [prefix/suffix size](docs/personalization%20and%20settings.md#preprocessing), [text generation settings](docs/personalization%20and%20settings.md#model-options), [custom few-shot examples](docs/personalization%20and%20settings.md#customize-the-few-shot-examples), and the [custom system prompt](docs/personalization%20and%20settings.md#customize-the-system-prompts) to your liking.
 - **Git-Ignore-Like Functionality**: The plugin features functionality similar to `.gitignore`, automatically disabling itself when opening files that match certain patterns. This helps prevent unintended triggers in sensitive documents. For more information, [click here](docs/how-to/ignore%20files.md).
 - **Partial Suggestions Insertion**: Insert portions of a suggestion incrementally using the right arrow key, enabling word-by-word insertion.
@@ -40,6 +40,7 @@ To install the plugin, please follow these steps:
 10. Choose your API provider and refer to the corresponding guide for specific instructions: 
     - [OpenAI API setup guide](docs/how-to/OpenAI%20API%20setup%20guide.md)
     - [OpenRouter API setup guide](docs/how-to/OpenRouter%20API%20setup%20guide.md)
+    - [DeepSeek API setup guide](docs/how-to/DeepSeek%20API%20setup%20guide.md)
     - [Anthropic API setup guide](docs/how-to/Anthropic%20API%20setup%20guide.md)
     - [Gemini API setup guide](docs/how-to/Gemini%20API%20setup%20guide.md)
     - [Azure OpenAI API setup guide](docs/how-to/Azure%20API%20setup%20guide.md)
@@ -111,7 +112,7 @@ Explore the following pages:
 The plugin is designed to be highly customizable, allowing you to tailor the following aspects:
 
 - **Quick Setup**: Enter your API key, choose a recommended model, and test the connection without touching advanced controls.
-- **API Provider**: OpenAI is the default Quick Setup provider. Advanced Settings also includes [OpenRouter](docs/how-to/OpenRouter%20API%20setup%20guide.md), [Anthropic](docs/how-to/Anthropic%20API%20setup%20guide.md), [Gemini](docs/how-to/Gemini%20API%20setup%20guide.md), [Azure OpenAI](docs/how-to/Azure%20API%20setup%20guide.md), and [Ollama](docs/how-to/Ollama%20setup%20guide.md).
+- **API Provider**: OpenAI is the default Quick Setup provider. Advanced Settings also includes [OpenRouter](docs/how-to/OpenRouter%20API%20setup%20guide.md), [DeepSeek](docs/how-to/DeepSeek%20API%20setup%20guide.md), [Anthropic](docs/how-to/Anthropic%20API%20setup%20guide.md), [Gemini](docs/how-to/Gemini%20API%20setup%20guide.md), [Azure OpenAI](docs/how-to/Azure%20API%20setup%20guide.md), and [Ollama](docs/how-to/Ollama%20setup%20guide.md).
 - **[Triggers](docs/personalization%20and%20settings.md#triggers)**: Define the text after which the plugin should suggest a completion.
 - **[Trigger Delay](docs/personalization%20and%20settings.md#trigger-delay)**: Set the duration the plugin should wait before offering a suggestion to minimize costs.
 - **[Prefix/Suffix Size](docs/personalization%20and%20settings.md#preprocessing)**: Determine the amount of text to include in the prediction request.
@@ -145,7 +146,7 @@ This plugin sends note context around your cursor to the API provider you config
 
 Provider API keys and endpoint settings are stored locally by Obsidian with this plugin's settings. The plugin does not include telemetry, ads, analytics, or a separate paid service, and it does not send data anywhere except the provider endpoint you configure.
 
-Do not send sensitive documents to OpenAI, OpenRouter, Anthropic, Gemini, or Azure OpenAI until you review their terms and privacy policies.
+Do not send sensitive documents to OpenAI, OpenRouter, DeepSeek, Anthropic, Gemini, or Azure OpenAI before you review their privacy terms.
 These providers could potentially store your data and utilize it to enhance their models, based on their current terms and conditions.
 So always make sure to read the terms and conditions of your chosen API provider before using it with this plugin.
 
@@ -185,6 +186,7 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) for the local setup and contribution pro
 - Run `Test Connection` after you change a provider, API key, endpoint, or model.
 - Use the provider setup guides if the connection test fails.
 - For OpenRouter errors, see the [OpenRouter troubleshooting steps](docs/how-to/OpenRouter%20API%20setup%20guide.md#troubleshooting).
+- For DeepSeek errors, see the [DeepSeek troubleshooting steps](docs/how-to/DeepSeek%20API%20setup%20guide.md#troubleshooting).
 - Use the issue-report button for unexpected plugin errors. Review the report before you submit it.
 
 ## Disclaimer

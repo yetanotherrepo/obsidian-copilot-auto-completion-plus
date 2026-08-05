@@ -10,6 +10,7 @@ body:
           options:
               - OpenAI
               - OpenRouter
+              - DeepSeek
               - Anthropic
               - Gemini
               - Azure OpenAI

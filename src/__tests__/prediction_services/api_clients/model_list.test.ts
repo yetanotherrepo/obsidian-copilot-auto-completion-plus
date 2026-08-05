@@ -43,6 +43,17 @@ describe("provider model recommendations", () => {
         ]);
     });
 
+    test("returns current DeepSeek quick models", () => {
+        const models = getQuickModels("deepseek");
+
+        expect(models.map((model) => model.id)).toEqual([
+            "deepseek-v4-flash",
+            "deepseek-v4-pro",
+        ]);
+        expect(models.filter((model) => model.recommended)).toHaveLength(1);
+        expect(models.every((model) => model.lastVerified === "2026-08-05")).toEqual(true);
+    });
+
     test("marks exactly one quick model as recommended per cloud provider", () => {
         for (const provider of ["openai", "anthropic", "gemini"] as const) {
             expect(getQuickModels(provider).filter((model) => model.recommended)).toHaveLength(1);
@@ -114,6 +125,44 @@ describe("provider model recommendations", () => {
         settings.apiProvider = "openrouter";
         settings.openRouterApiSettings.key = "openrouter-key";
         settings.openRouterApiSettings.url = "http://169.254.169.254/api/v1/chat/completions";
+
+        const result = await fetchModelsForProvider(settings);
+
+        expect(result.isErr()).toEqual(true);
+        expect(mockedRequestUrl).not.toHaveBeenCalled();
+    });
+
+    test("loads DeepSeek models from the official endpoint", async () => {
+        mockedRequestUrl.mockResolvedValue({
+            status: 200,
+            json: {
+                object: "list",
+                data: [
+                    {id: "deepseek-v4-pro", owned_by: "deepseek"},
+                    {id: "deepseek-v4-flash", owned_by: "deepseek"},
+                ],
+            },
+        });
+        const settings = cloneDeep(DEFAULT_SETTINGS);
+        settings.apiProvider = "deepseek";
+        settings.deepSeekApiSettings.key = "deepseek-key";
+
+        const result = await fetchModelsForProvider(settings);
+
+        expect(result._unsafeUnwrap()).toEqual([
+            {id: "deepseek-v4-flash", name: "deepseek-v4-flash"},
+            {id: "deepseek-v4-pro", name: "deepseek-v4-pro"},
+        ]);
+        const request = mockedRequestUrl.mock.calls[0][0] as any;
+        expect(request.headers.Authorization).toEqual("Bearer deepseek-key");
+        expect(request.url).toEqual("https://api.deepseek.com/models");
+    });
+
+    test("does not load DeepSeek models through an unsafe endpoint", async () => {
+        const settings = cloneDeep(DEFAULT_SETTINGS);
+        settings.apiProvider = "deepseek";
+        settings.deepSeekApiSettings.key = "deepseek-key";
+        settings.deepSeekApiSettings.url = "http://169.254.169.254/chat/completions";
 
         const result = await fetchModelsForProvider(settings);
 

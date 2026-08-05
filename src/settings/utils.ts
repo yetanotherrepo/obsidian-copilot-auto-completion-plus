@@ -17,9 +17,11 @@ import {
     isSettingsV1,
     isSettingsV2,
     isSettingsV3,
+    isSettingsV4,
     migrateFromV0ToV1,
     migrateFromV1ToV2,
     migrateFromV2ToV3,
+    migrateFromV3ToV4,
 } from "./versions/migration";
 
 export {findEqualPaths};
@@ -152,7 +154,10 @@ export function deserializeSettings(data: unknown): Result<Settings, Error> {
     if (isSettingsV2(settings)) {
         settings = migrateFromV2ToV3(settings);
     }
-    if (!isSettingsV3(settings)) {
+    if (isSettingsV3(settings)) {
+        settings = migrateFromV3ToV4(settings);
+    }
+    if (!isSettingsV4(settings)) {
         return fixStructureAndValueErrors(settingsSchema, settings, DEFAULT_SETTINGS);
     }
     return parseWithSchema(settingsSchema, settings);

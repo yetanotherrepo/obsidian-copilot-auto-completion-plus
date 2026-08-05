@@ -26,6 +26,7 @@ import AnthropicApiClient from "../api_clients/AnthropicApiClient";
 import GeminiApiClient from "../api_clients/GeminiApiClient";
 import SensitiveDataRedactor from "../pre_processors/sensitive_data_redactor";
 import OpenRouterApiClient from "../api_clients/OpenRouterApiClient";
+import DeepSeekApiClient from "../api_clients/DeepSeekApiClient";
 
 class ChatGPTWithReasoning implements PredictionService {
     private readonly client: ApiClient;
@@ -93,6 +94,8 @@ class ChatGPTWithReasoning implements PredictionService {
             client = OpenAIApiClient.fromSettings(settings);
         } else if (settings.apiProvider === "openrouter") {
             client = OpenRouterApiClient.fromSettings(settings);
+        } else if (settings.apiProvider === "deepseek") {
+            client = DeepSeekApiClient.fromSettings(settings);
         } else if (settings.apiProvider === "azure") {
             client = AzureOAIClient.fromSettings(settings);
         } else if (settings.apiProvider === "ollama") {
