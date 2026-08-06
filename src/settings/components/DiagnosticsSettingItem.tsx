@@ -29,6 +29,10 @@ export default function DiagnosticsSettingItem(): React.JSX.Element {
                 <p>Endpoint: {diagnostics.endpoint}</p>
                 <p>Request chars: {diagnostics.requestCharCount ?? "Unknown"}</p>
                 <p>Response chars: {diagnostics.responseCharCount ?? "Unknown"}</p>
+                <p>Finish reason: {diagnostics.finishReason ?? "Unknown"}</p>
+                <p>Output tokens: {diagnostics.outputTokenCount ?? "Unknown"}</p>
+                <p>Reasoning tokens: {diagnostics.reasoningTokenCount ?? "Unknown"}</p>
+                <p>Reasoning chars: {diagnostics.reasoningCharCount ?? "Unknown"}</p>
                 <p>Latency: {diagnostics.latencyMs ?? "Unknown"} ms</p>
                 <p>Retries: {diagnostics.retryCount ?? 0}</p>
                 <p>Error: {diagnostics.errorCode ?? "None"}</p>

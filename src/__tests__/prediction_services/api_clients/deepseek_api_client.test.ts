@@ -2,6 +2,10 @@ import {beforeEach, describe, expect, jest, test} from "@jest/globals";
 import {requestUrl} from "obsidian";
 
 import DeepSeekApiClient from "../../../prediction_services/api_clients/DeepSeekApiClient";
+import {
+    clearRequestDiagnostics,
+    getLastRequestDiagnostics,
+} from "../../../prediction_services/diagnostics";
 import {ModelOptions} from "../../../prediction_services/types";
 
 jest.mock("obsidian", () => ({
@@ -21,6 +25,7 @@ const modelOptions: ModelOptions = {
 describe("DeepSeekApiClient", () => {
     beforeEach(() => {
         mockedRequestUrl.mockReset();
+        clearRequestDiagnostics();
     });
 
     test("builds a documented chat completion request", async () => {
@@ -53,7 +58,98 @@ describe("DeepSeekApiClient", () => {
             temperature: 0.4,
             top_p: 0.8,
             max_tokens: 256,
+            thinking: {type: "disabled"},
+            stream: false,
         });
+    });
+
+    test("does not expose reasoning when the token limit produces no completion", async () => {
+        const reasoning = "private reasoning derived from the note";
+        mockedRequestUrl.mockResolvedValue({
+            status: 200,
+            json: {
+                choices: [{
+                    finish_reason: "length",
+                    message: {content: "", reasoning_content: reasoning},
+                }],
+                usage: {
+                    completion_tokens: 256,
+                    completion_tokens_details: {reasoning_tokens: 256},
+                },
+            },
+        });
+        const client = new DeepSeekApiClient(
+            "deepseek-key",
+            "https://api.deepseek.com/chat/completions",
+            "deepseek-v4-flash",
+            modelOptions
+        );
+
+        const result = await client.query([{role: "user", content: "private note context"}]);
+
+        expect(result.isErr()).toEqual(true);
+        expect(mockedRequestUrl).toHaveBeenCalledTimes(1);
+        if (result.isErr()) {
+            expect(result.error.code).toEqual("incomplete_response");
+            expect(result.error.message).toContain("Increase Max Tokens");
+            expect(result.error.safeDiagnostics.finishReason).toEqual("length");
+            expect(result.error.safeDiagnostics.incompleteReason).toEqual("max_tokens");
+            expect(result.error.safeDiagnostics.outputTokenCount).toEqual(256);
+            expect(result.error.safeDiagnostics.reasoningTokenCount).toEqual(256);
+            expect(result.error.safeDiagnostics.reasoningCharCount).toEqual(reasoning.length);
+            expect(result.error.safeDiagnostics.responseCharCount).toEqual(0);
+            expect("timestamp" in result.error.safeDiagnostics).toEqual(true);
+            expect(JSON.stringify(result.error.safeDiagnostics)).not.toContain(reasoning);
+            expect(JSON.stringify(result.error.safeDiagnostics)).not.toContain("private note context");
+            expect(JSON.stringify(result.error.safeDiagnostics)).not.toContain("deepseek-key");
+        }
+    });
+
+    test("retries one transient empty response", async () => {
+        mockedRequestUrl
+            .mockResolvedValueOnce({
+                status: 200,
+                json: {choices: [{finish_reason: "stop", message: {content: ""}}]},
+            })
+            .mockResolvedValueOnce({
+                status: 200,
+                json: {choices: [{finish_reason: "stop", message: {content: "retry result"}}]},
+            });
+        const client = new DeepSeekApiClient(
+            "deepseek-key",
+            "https://api.deepseek.com/chat/completions",
+            "deepseek-v4-flash",
+            modelOptions
+        );
+
+        const result = await client.queryChatModel([{role: "user", content: "Hello"}]);
+
+        expect(result._unsafeUnwrap()).toEqual("retry result");
+        expect(mockedRequestUrl).toHaveBeenCalledTimes(2);
+        expect(getLastRequestDiagnostics()?.retryCount).toEqual(1);
+        expect(getLastRequestDiagnostics()?.finishReason).toEqual("stop");
+    });
+
+    test("stops after one retry when DeepSeek keeps returning empty content", async () => {
+        mockedRequestUrl.mockResolvedValue({
+            status: 200,
+            json: {choices: [{finish_reason: "stop", message: {content: ""}}]},
+        });
+        const client = new DeepSeekApiClient(
+            "deepseek-key",
+            "https://api.deepseek.com/chat/completions",
+            "deepseek-v4-flash",
+            modelOptions
+        );
+
+        const result = await client.query([{role: "user", content: "Hello"}]);
+
+        expect(result.isErr()).toEqual(true);
+        expect(mockedRequestUrl).toHaveBeenCalledTimes(2);
+        if (result.isErr()) {
+            expect(result.error.code).toEqual("empty_response");
+            expect(result.error.safeDiagnostics.retryCount).toEqual(1);
+        }
     });
 
     test("retries without a parameter rejected by a model", async () => {
@@ -79,6 +175,31 @@ describe("DeepSeekApiClient", () => {
         expect(mockedRequestUrl).toHaveBeenCalledTimes(2);
         expect(JSON.parse(mockedRequestUrl.mock.calls[0][0].body).temperature).toEqual(0.4);
         expect(JSON.parse(mockedRequestUrl.mock.calls[1][0].body).temperature).toBeUndefined();
+    });
+
+    test("retries without the thinking switch when the API rejects it", async () => {
+        mockedRequestUrl
+            .mockResolvedValueOnce({
+                status: 400,
+                json: {error: {message: "thinking is not a supported parameter"}},
+            })
+            .mockResolvedValueOnce({
+                status: 200,
+                json: {choices: [{message: {content: "fallback result"}}]},
+            });
+        const client = new DeepSeekApiClient(
+            "deepseek-key",
+            "https://api.deepseek.com/chat/completions",
+            "deepseek-v4-flash",
+            modelOptions
+        );
+
+        const result = await client.queryChatModel([{role: "user", content: "Hello"}]);
+
+        expect(result._unsafeUnwrap()).toEqual("fallback result");
+        expect(mockedRequestUrl).toHaveBeenCalledTimes(2);
+        expect(JSON.parse(mockedRequestUrl.mock.calls[0][0].body).thinking).toEqual({type: "disabled"});
+        expect(JSON.parse(mockedRequestUrl.mock.calls[1][0].body).thinking).toBeUndefined();
     });
 
     test("maps insufficient balance to a quota error", async () => {
