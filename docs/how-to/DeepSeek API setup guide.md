@@ -43,4 +43,5 @@ The plugin sends note context to DeepSeek when it requests a completion. Review 
 - If DeepSeek limits the request rate, wait and test the connection again.
 - If DeepSeek rejects a request with HTTP 400, select another model or reset the model options.
 - If the finish reason is `length`, increase `Max Tokens` and try again.
-- Open the developer console to see safe diagnostics. The diagnostics include token counts and character counts. They do not include note contents, API keys, or reasoning text.
+- Open `Advanced Settings`. Review `Last request diagnostics`. You can also open the Obsidian developer console to see the same safe data.
+- The diagnostics include token counts and character counts. They do not include note contents, API keys, or reasoning text.
