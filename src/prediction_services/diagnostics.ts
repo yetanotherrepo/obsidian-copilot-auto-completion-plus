@@ -6,11 +6,12 @@ export interface RequestDiagnostics extends SafeDiagnostics {
 
 let lastRequestDiagnostics: RequestDiagnostics | null = null;
 
-export function recordRequestDiagnostics(diagnostics: SafeDiagnostics): void {
+export function recordRequestDiagnostics(diagnostics: SafeDiagnostics): RequestDiagnostics {
     lastRequestDiagnostics = {
         ...diagnostics,
         timestamp: new Date().toISOString(),
     };
+    return lastRequestDiagnostics;
 }
 
 export function getLastRequestDiagnostics(): RequestDiagnostics | null {
@@ -43,9 +44,11 @@ export function diagnosticsToMarkdown(diagnostics: RequestDiagnostics | SafeDiag
         `- Request characters: ${diagnostics.requestCharCount ?? "Unknown"}`,
         `- Response characters: ${diagnostics.responseCharCount ?? "Unknown"}`,
         `- Response status: ${safeEnumDiagnostic(diagnostics.responseStatus, RESPONSE_STATUSES, "Unknown")}`,
+        `- Finish reason: ${safeEnumDiagnostic(diagnostics.finishReason, FINISH_REASONS, "Unknown")}`,
         `- Incomplete reason: ${safeEnumDiagnostic(diagnostics.incompleteReason, INCOMPLETE_REASONS, "None")}`,
         `- Output tokens: ${diagnostics.outputTokenCount ?? "Unknown"}`,
         `- Reasoning tokens: ${diagnostics.reasoningTokenCount ?? "Unknown"}`,
+        `- Reasoning characters: ${diagnostics.reasoningCharCount ?? "Unknown"}`,
         `- Latency: ${diagnostics.latencyMs ?? "Unknown"} ms`,
         `- Retry count: ${diagnostics.retryCount ?? 0}`,
         `- Error code: ${diagnostics.errorCode ?? "None"}`,
@@ -58,6 +61,7 @@ export function diagnosticsToMarkdown(diagnostics: RequestDiagnostics | SafeDiag
 }
 
 const RESPONSE_STATUSES = new Set(["queued", "in_progress", "completed", "incomplete", "failed", "cancelled"]);
+const FINISH_REASONS = new Set(["stop", "length", "content_filter", "tool_calls", "insufficient_system_resource", "other"]);
 const INCOMPLETE_REASONS = new Set(["max_output_tokens", "max_tokens", "content_filter"]);
 
 function safeEnumDiagnostic(

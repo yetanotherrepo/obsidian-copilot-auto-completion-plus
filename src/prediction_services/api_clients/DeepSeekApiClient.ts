@@ -7,7 +7,7 @@ import {
     selectDeepSeekModels,
 } from "../../deepseek";
 import {Settings} from "../../settings/versions";
-import {readArray, readRecord, readString} from "../../unknown";
+import {readArray, readNumber, readRecord, readString} from "../../unknown";
 import {recordRequestDiagnostics} from "../diagnostics";
 import {
     CompletionResult,
@@ -29,6 +29,19 @@ import {
 } from "../provider";
 import {ApiClient, ChatMessage, ModelOptions} from "../types";
 import {makeProviderRequest} from "./utils";
+
+interface DeepSeekParsedResponse {
+    completion: CompletionResult;
+    diagnostics: Partial<SafeDiagnostics>;
+}
+
+const DEEPSEEK_FINISH_REASONS = new Set([
+    "stop",
+    "length",
+    "content_filter",
+    "tool_calls",
+    "insufficient_system_resource",
+]);
 
 class DeepSeekApiClient implements ApiClient, ProviderAdapter {
     private readonly apiKey: string;
@@ -76,56 +89,96 @@ class DeepSeekApiClient implements ApiClient, ProviderAdapter {
         const request = this.buildRequest(messages);
         const diagnostics = this.safeDiagnostics(messages);
         const startedAt = Date.now();
-        const {result, retryCount} = await this.makeRequestWithUnsupportedParameterRetry(
+        let {result, retryCount, requestBody} = await this.makeRequestWithUnsupportedParameterRetry(
             request.body || {},
             diagnostics
         );
-        const finishedDiagnostics: SafeDiagnostics = {
-            ...diagnostics,
-            latencyMs: Date.now() - startedAt,
-            retryCount,
-        };
 
         if (result.isErr()) {
-            const error = {
-                ...result.error,
-                safeDiagnostics: {
-                    ...result.error.safeDiagnostics,
-                    ...finishedDiagnostics,
-                    errorCode: result.error.code,
-                },
-            };
-            recordRequestDiagnostics(error.safeDiagnostics);
-            return err(error);
+            return err(this.recordError(result.error, {
+                ...diagnostics,
+                latencyMs: Date.now() - startedAt,
+                retryCount,
+            }));
         }
 
+        let parsed: DeepSeekParsedResponse;
         try {
-            const completion = this.parseResponse(result.value);
-            if (completion.text.length === 0) {
-                const providerError = createProviderError({
-                    provider: "deepseek",
-                    code: "empty_response",
-                    message: "DeepSeek returned no completion text.",
-                    safeDiagnostics: finishedDiagnostics,
-                });
-                recordRequestDiagnostics(providerError.safeDiagnostics);
-                return err(providerError);
-            }
-            recordRequestDiagnostics({
-                ...finishedDiagnostics,
-                responseCharCount: completion.text.length,
-            });
-            return ok(completion);
+            parsed = this.parseResponseWithDiagnostics(result.value);
         } catch (error) {
             const providerError = createProviderError({
                 provider: "deepseek",
                 code: "parse_error",
                 message: error instanceof Error ? error.message : String(error),
-                safeDiagnostics: finishedDiagnostics,
+                safeDiagnostics: {
+                    ...diagnostics,
+                    latencyMs: Date.now() - startedAt,
+                    retryCount,
+                },
             });
-            recordRequestDiagnostics(providerError.safeDiagnostics);
-            return err(providerError);
+            return err(this.recordError(providerError));
         }
+
+        if (parsed.completion.text.length === 0 && parsed.diagnostics.finishReason !== "length") {
+            ({result, retryCount, requestBody} = await this.makeRequestWithUnsupportedParameterRetry(
+                requestBody,
+                diagnostics,
+                retryCount + 1
+            ));
+
+            if (result.isErr()) {
+                return err(this.recordError(result.error, {
+                    ...diagnostics,
+                    latencyMs: Date.now() - startedAt,
+                    retryCount,
+                }));
+            }
+
+            try {
+                parsed = this.parseResponseWithDiagnostics(result.value);
+            } catch (error) {
+                const providerError = createProviderError({
+                    provider: "deepseek",
+                    code: "parse_error",
+                    message: error instanceof Error ? error.message : String(error),
+                    safeDiagnostics: {
+                        ...diagnostics,
+                        latencyMs: Date.now() - startedAt,
+                        retryCount,
+                    },
+                });
+                return err(this.recordError(providerError));
+            }
+        }
+
+        const finishedDiagnostics: SafeDiagnostics = {
+            ...diagnostics,
+            ...parsed.diagnostics,
+            responseCharCount: parsed.completion.text.length,
+            latencyMs: Date.now() - startedAt,
+            retryCount,
+        };
+
+        if (parsed.completion.text.length === 0) {
+            const reachedTokenLimit = parsed.diagnostics.finishReason === "length";
+            const providerError = createProviderError({
+                provider: "deepseek",
+                code: reachedTokenLimit ? "incomplete_response" : "empty_response",
+                message: reachedTokenLimit
+                    ? "DeepSeek reached the max_tokens limit before it returned completion text. Increase Max Tokens and try again."
+                    : parsed.diagnostics.reasoningCharCount
+                        ? "DeepSeek returned reasoning but no final completion text."
+                        : "DeepSeek returned no completion text.",
+                safeDiagnostics: {
+                    ...finishedDiagnostics,
+                    ...(reachedTokenLimit ? {incompleteReason: "max_tokens"} : {}),
+                },
+            });
+            return err(this.recordError(providerError));
+        }
+
+        recordRequestDiagnostics(finishedDiagnostics);
+        return ok(parsed.completion);
     }
 
     buildRequest(messages: ChatMessage[]): ProviderRequest {
@@ -138,19 +191,46 @@ class DeepSeekApiClient implements ApiClient, ProviderAdapter {
                 messages,
                 ...optionsForCapabilities(this.modelOptions, capabilities),
                 ...(capabilities.supportsMaxTokens ? {max_tokens: this.modelOptions.max_tokens} : {}),
+                thinking: {type: "disabled"},
+                stream: false,
             },
             headers: this.headers(),
         };
     }
 
     parseResponse(data: unknown): CompletionResult {
+        return this.parseResponseWithDiagnostics(data).completion;
+    }
+
+    private parseResponseWithDiagnostics(data: unknown): DeepSeekParsedResponse {
         const firstChoice = (readArray(data, "choices") ?? [])[0];
         const message = firstChoice === undefined ? undefined : readRecord(firstChoice, "message");
         const content = readString(message, "content");
         if (content === undefined) {
             throw new Error("The DeepSeek response does not contain message content.");
         }
-        return {text: content};
+
+        const rawFinishReason = firstChoice === undefined
+            ? undefined
+            : readString(firstChoice, "finish_reason");
+        const finishReason = rawFinishReason === undefined
+            ? undefined
+            : DEEPSEEK_FINISH_REASONS.has(rawFinishReason.toLowerCase())
+                ? rawFinishReason.toLowerCase()
+                : "other";
+        const reasoningContent = readString(message, "reasoning_content");
+        const usage = readRecord(data, "usage");
+        const completionDetails = readRecord(usage, "completion_tokens_details");
+
+        return {
+            completion: {text: content},
+            diagnostics: {
+                ...(finishReason === undefined ? {} : {finishReason}),
+                ...(reasoningContent === undefined ? {} : {reasoningCharCount: reasoningContent.length}),
+                ...this.safeTokenCount(readNumber(usage, "completion_tokens"), "outputTokenCount"),
+                ...this.safeTokenCount(readNumber(completionDetails, "reasoning_tokens"), "reasoningTokenCount"),
+            },
+        };
     }
 
     normalizeError(error: Error | string | ProviderError, diagnostics = this.safeDiagnostics([])): ProviderError {
@@ -204,11 +284,16 @@ class DeepSeekApiClient implements ApiClient, ProviderAdapter {
 
     private async makeRequestWithUnsupportedParameterRetry(
         body: Record<string, unknown>,
-        diagnostics: SafeDiagnostics
-    ): Promise<{result: Result<unknown, ProviderError>; retryCount: number}> {
+        diagnostics: SafeDiagnostics,
+        initialRetryCount = 0
+    ): Promise<{
+        result: Result<unknown, ProviderError>;
+        retryCount: number;
+        requestBody: Record<string, unknown>;
+    }> {
         let requestBody = {...body};
         const removedParameters = new Set<string>();
-        let retryCount = 0;
+        let retryCount = initialRetryCount;
 
         for (;;) {
             const result = await makeProviderRequest(
@@ -220,7 +305,7 @@ class DeepSeekApiClient implements ApiClient, ProviderAdapter {
                 {...diagnostics, retryCount}
             );
             if (result.isOk()) {
-                return {result, retryCount};
+                return {result, retryCount, requestBody};
             }
 
             const unsupportedParameter = result.error.unsupportedParameter
@@ -230,7 +315,7 @@ class DeepSeekApiClient implements ApiClient, ProviderAdapter {
                 || removedParameters.has(unsupportedParameter)
                 || !(unsupportedParameter in requestBody)
             ) {
-                return {result, retryCount};
+                return {result, retryCount, requestBody};
             }
 
             removedParameters.add(unsupportedParameter);
@@ -238,6 +323,24 @@ class DeepSeekApiClient implements ApiClient, ProviderAdapter {
             requestBody = {...requestBody};
             delete requestBody[unsupportedParameter];
         }
+    }
+
+    private safeTokenCount(
+        value: number | undefined,
+        key: "outputTokenCount" | "reasoningTokenCount"
+    ): Partial<SafeDiagnostics> {
+        return value !== undefined && Number.isFinite(value) && value >= 0
+            ? {[key]: value}
+            : {};
+    }
+
+    private recordError(error: ProviderError, diagnostics?: SafeDiagnostics): ProviderError {
+        const safeDiagnostics = recordRequestDiagnostics({
+            ...error.safeDiagnostics,
+            ...diagnostics,
+            errorCode: error.code,
+        });
+        return {...error, safeDiagnostics};
     }
 
     private headers(): Record<string, string> {

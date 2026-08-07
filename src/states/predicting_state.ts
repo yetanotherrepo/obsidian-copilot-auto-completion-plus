@@ -69,7 +69,7 @@ class PredictingState extends State {
 
         if (result.isErr()) {
             showIssueReportNotice(
-                "Copilot: The plugin could not generate a prediction. Safe diagnostics are available in the developer console.",
+                "Copilot: The plugin could not generate a prediction. Open Advanced Settings to view Last request diagnostics, or check the developer console.",
                 {
                     source: "prediction",
                     pluginVersion: this.context.pluginVersion,

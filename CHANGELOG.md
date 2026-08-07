@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.1
+- Disable DeepSeek thinking mode for inline predictions.
+- Retry one transient empty DeepSeek response.
+- Report token-limit responses and safe usage metadata in request diagnostics.
+
 ## 1.6.0
 - Add DeepSeek as a separate API provider.
 - Add DeepSeek model loading, connection tests, diagnostics, and provider-specific errors.

@@ -55,9 +55,11 @@ export interface SafeDiagnostics {
     requestCharCount?: number;
     responseCharCount?: number;
     responseStatus?: string;
+    finishReason?: string;
     incompleteReason?: string;
     outputTokenCount?: number;
     reasoningTokenCount?: number;
+    reasoningCharCount?: number;
     promptBundleVersion?: string;
     capabilities?: ModelCapabilities;
 }
@@ -454,6 +456,7 @@ const SAFE_UNSUPPORTED_PARAMETERS = new Set([
     "max_completion_tokens",
     "maxOutputTokens",
     "store",
+    "thinking",
 ]);
 
 export function safeUnsupportedParameterName(value: string): string | null {
